@@ -83,9 +83,9 @@ screenshot(page, "clipped.png", Dict("clip" => box))
 
 ```julia
 # Basic page navigation and interaction
-browser = Browser()
+browser = launch_browser()
 context = new_context(browser)
-page = create_page(context)
+page = new_page(context)
 
 try
     # Navigation with wait
