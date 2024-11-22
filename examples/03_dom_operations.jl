@@ -11,6 +11,13 @@ try
     # Wait for page load and check content
     sleep(2)
 
+    # First check if we can get the document
+    debug_result = execute_cdp_method(browser, page, "Runtime.evaluate", Dict(
+        "expression" => "document.documentElement.outerHTML",
+        "returnByValue" => true
+    ))
+    println("Debug - Full page content:", debug_result)
+
     # Find elements by selector and get their text content
     result = execute_cdp_method(browser, page, "Runtime.evaluate", Dict(
         "expression" => """

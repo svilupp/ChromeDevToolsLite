@@ -113,7 +113,7 @@ execute_cdp_method(browser, page, "Runtime.evaluate", Dict(
 ```
 """
 function execute_cdp_method(browser::Browser, page::Page, method::String, params::Dict=Dict())
-    endpoint = "$(browser.endpoint)/json/protocol/$(page.id)"
+    endpoint = "$(browser.endpoint)/json/send/$(page.id)"
 
     payload = Dict(
         "method" => method,
