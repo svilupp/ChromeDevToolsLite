@@ -26,9 +26,8 @@ brew install chromium
 ## Project Structure
 
 - `src/`: Source code
-  - `types/`: Core type definitions
-  - `cdp/`: Chrome DevTools Protocol handling
-  - `utils/`: Utility functions
+  - `types/`: Core type definitions (Browser, Page)
+  - `http/`: HTTP endpoint handlers
 - `test/`: Test suite
 - `examples/`: Example scripts
 - `docs/`: Documentation
@@ -64,8 +63,8 @@ git checkout -b feature/your-feature-name
 
 ## Common Development Tasks
 
-### Adding a New CDP Command
-1. Add command definition in appropriate type file
+### Adding a New HTTP Endpoint
+1. Add endpoint definition in appropriate type file
 2. Implement error handling
 3. Add unit tests
 4. Add example usage
@@ -73,27 +72,28 @@ git checkout -b feature/your-feature-name
 
 Example from our codebase:
 ```julia
-# From examples/14_evaluate_handle_test.jl
-# Implementation of evaluate_handle
-element = query_selector(page, "#myButton")
-result = evaluate_handle(element, "el => el.textContent")
+# Example of implementing a new endpoint
+browser = connect_browser()
+pages = get_pages(browser)
+new_page = new_page(browser)
+close_page(browser, new_page)
 ```
 
 ### Testing Tips
-- Use `MockWebSocket` for CDP tests
-- Test error conditions and timeouts
+- Test HTTP endpoint responses
+- Test error conditions
 - Verify edge cases
 
 Example test pattern:
 ```julia
-# From examples/05_error_handling.jl
 try
-    element = wait_for_selector(page, "#non-existent", timeout=5000)
+    browser = connect_browser("http://localhost:9222")
+    page = new_page(browser)
 catch e
-    if e isa TimeoutError
-        println("Element not found within timeout period")
-    elseif e isa ElementNotFoundError
-        println("Element does not exist on the page")
+    if e isa HTTP.RequestError
+        println("Failed to connect to Chrome")
+    else
+        println("Unexpected error: ", e)
     end
 end
 ```
