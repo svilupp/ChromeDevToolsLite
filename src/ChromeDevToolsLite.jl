@@ -18,6 +18,11 @@ struct Browser
     end
 end
 
+"""
+    Page(id::String, url::String, title::String)
+
+Represents a Chrome browser page/tab with its unique identifier, current URL, and title.
+"""
 struct Page
     id::String
     url::String
