@@ -2,53 +2,35 @@
 
 ```@docs
 Browser
-BrowserProcess
-launch_browser
-launch_browser_process
-```
-
-## Browser Context Methods
-
-```@docs
-new_context
-create_browser_context
-contexts
-Base.close(::Browser)
+connect_browser
+get_pages
+new_page
+close_page
 Base.show(::IO, ::Browser)
-Base.show(::IO, ::BrowserProcess)
-kill_browser_process
 ```
 
 ## Examples
 
 ```julia
 # Basic browser setup with error handling
-browser = launch_browser(headless=true)
+browser = connect_browser()
 try
-    context = new_context(browser)
-    page = new_page(context)
+    # List all pages
+    pages = get_pages(browser)
 
-    # Navigate to a website
-    goto(page, "https://example.com")
+    # Create a new page
+    page = new_page(browser)
 
     # Do some work...
 finally
-    close(browser)
+    # Clean up when done
+    close_page(browser, page)
 end
-
-# Create a new context
-context = new_context(browser)
-
-# Get all contexts
-all_contexts = contexts(browser)
-
-# Close browser when done
-close(browser)
 ```
 
 ## Error Handling
 
 The browser operations can throw the following errors:
-- `ConnectionError`: When there are issues with the CDP connection
-- `TimeoutError`: When operations exceed their timeout limit
+- `HTTP.RequestError`: When there are issues connecting to Chrome
+- `ErrorException`: When Chrome is not running or the endpoint is incorrect
 ```

@@ -4,50 +4,42 @@ CurrentModule = ChromeDevToolsLite
 
 # ChromeDevToolsLite
 
-ChromeDevToolsLite.jl is a lightweight Julia package for browser automation using the Chrome DevTools Protocol (CDP). It provides a simple, intuitive interface for controlling Chrome/Chromium browsers programmatically.
+ChromeDevToolsLite.jl is a minimal Julia package for browser automation using HTTP endpoints of the Chrome DevTools Protocol (CDP). It provides a simple interface for managing Chrome/Chromium browser tabs programmatically.
 
 ## Features
 
-- Browser automation and control via Chrome DevTools Protocol
-- Page navigation and interaction with timeouts and error handling
-- Comprehensive element selection and manipulation
-- Form handling (input, checkboxes, dropdowns)
-- Screenshot capabilities (full page and elements)
-- Robust error handling with specific error types
+- Browser connection via HTTP endpoints
+- Page/tab management (create, list, close)
+- Simple error handling
 
 ## Quick Start
 
 ```julia
 using ChromeDevToolsLite
 
-# Launch browser and navigate
-browser = launch_browser()
-context = new_context(browser)
-page = new_page(context)
+# Connect to Chrome running with --remote-debugging-port=9222
+browser = connect_browser()
 
 try
-    # Navigate and wait for content
-    goto(page, "https://example.com")
-    element = wait_for_selector(page, "#content")
+    # Create a new page
+    page = new_page(browser)
+    println("Created new page with ID: $(page.id)")
 
-    # Interact with forms
-    type_text(page, "#search", "query")
-    click(page, "#submit")
+    # List all pages
+    pages = get_pages(browser)
+    println("Total pages: ", length(pages))
 
-    # Handle multiple elements
-    items = query_selector_all(page, ".item")
-    for item in items
-        println(get_text(item))
-    end
-
-    # Take screenshots
-    screenshot(page, "page.png")
+    # Clean up
+    close_page(browser, page)
 finally
-    close(browser)
+    # Make sure to clean up any remaining pages
+    for page in get_pages(browser)
+        close_page(browser, page)
+    end
 end
 ```
 
-See the [Getting Started with ChromeDevToolsLite.jl](@ref) guide for more examples.
+See the [Browser](@ref) and [Page](@ref) API documentation for more details.
 
 ```@index
 ```
