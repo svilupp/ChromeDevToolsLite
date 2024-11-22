@@ -44,19 +44,19 @@ function JSON3.StructTypes.StructType(::Type{<:AbstractCDPMessage})
 end
 
 function JSON3.StructTypes.lower(msg::CDPRequest)
-    Dict{String,Any}("id" => msg.id, "method" => msg.method, "params" => msg.params)
+    Dict{String,<:Any}("id" => msg.id, "method" => msg.method, "params" => msg.params)
 end
 
 function JSON3.StructTypes.lower(msg::CDPResponse)
     if !isnothing(msg.error)
-        Dict{String,Any}("id" => msg.id, "error" => msg.error)
+        Dict{String,<:Any}("id" => msg.id, "error" => msg.error)
     else
-        Dict{String,Any}("id" => msg.id, "result" => msg.result)
+        Dict{String,<:Any}("id" => msg.id, "result" => msg.result)
     end
 end
 
 function JSON3.StructTypes.lower(msg::CDPEvent)
-    Dict{String,Any}("method" => msg.method, "params" => msg.params)
+    Dict{String,<:Any}("method" => msg.method, "params" => msg.params)
 end
 
 # Message Parsing

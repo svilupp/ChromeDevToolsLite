@@ -140,7 +140,7 @@ function wait_for_load(page::Page; timeout::Int=30000)
     message = Dict{String,<:Any}(
         "sessionId" => page.session_id,
         "method" => "Page.enable",
-        "params" => Dict(),
+        "params" => Dict{String,<:Any}(),
         "id" => get_next_message_id()
     )
 
@@ -348,7 +348,7 @@ end
 
 Takes a screenshot of the page and returns it as a base64-encoded string.
 """
-function screenshot(page::Page; options::AbstractDict{String,<:Any}=Dict{String,Any}())
+function screenshot(page::Page; options::AbstractDict{String,<:Any}=Dict{String,<:Any}())
     page.verbose && @info "Taking screenshot" options
 
     params = Dict{String,<:Any}(

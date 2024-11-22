@@ -53,7 +53,7 @@ function launch_browser(;headless::Bool=true, port::Union{Int,Nothing}=nothing, 
         verbose && @info "WebSocket connection established"
 
         # Create a new target
-        create_target = create_cdp_message("Target.createTarget", Dict{String,Any}("url" => "about:blank"))
+        create_target = create_cdp_message("Target.createTarget", Dict{String,<:Any}("url" => "about:blank"))
         response_channel = send_message(session, create_target)
         response = take!(response_channel)
         if !isnothing(response.error)
@@ -62,7 +62,7 @@ function launch_browser(;headless::Bool=true, port::Union{Int,Nothing}=nothing, 
         target_id = response.result["targetId"]
 
         # Attach to the target
-        attach_params = Dict{String,Any}("targetId" => target_id, "flatten" => true)
+        attach_params = Dict{String,<:Any}("targetId" => target_id, "flatten" => true)
         attach_target = create_cdp_message("Target.attachToTarget", attach_params)
         response_channel = send_message(session, attach_target)
         response = take!(response_channel)
@@ -72,10 +72,10 @@ function launch_browser(;headless::Bool=true, port::Union{Int,Nothing}=nothing, 
         session_id = response.result["sessionId"]
 
         # Now enable Runtime domain on the target
-        enable_runtime = Dict{String,Any}(
+        enable_runtime = Dict{String,<:Any}(
             "sessionId" => session_id,
             "method" => "Runtime.enable",
-            "params" => Dict(),
+            "params" => Dict{String,<:Any}(),
             "id" => get_next_message_id()
         )
         response_channel = send_message(session, enable_runtime)

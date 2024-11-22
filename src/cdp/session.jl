@@ -124,7 +124,7 @@ function process_messages(session::CDPSession)
             data = try
                 message = read(session.ws)
                 session.verbose && @info "Received CDP message" message=message
-                JSON3.read(message, Dict{String,Any})  # Keep Dict here as it's the concrete type from JSON3
+                JSON3.read(message, Dict{String,<:Any})  # Allow flexible value types from JSON
             catch e
                 if session.is_closed[]
                     break
