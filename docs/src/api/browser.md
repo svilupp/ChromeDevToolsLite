@@ -30,6 +30,25 @@ try
         "expression" => "document.title",
         "returnByValue" => true
     ))
+
+    # Click an element using CDP
+    execute_cdp_method(browser, page, "Runtime.evaluate", Dict(
+        "expression" => "document.querySelector('.my-button').click()"
+    ))
+
+    # Type text into an input using CDP
+    execute_cdp_method(browser, page, "Runtime.evaluate", Dict(
+        "expression" => """
+            const input = document.querySelector('input[name="username"]');
+            input.value = 'myusername';
+            input.dispatchEvent(new Event('input'));
+        """
+    ))
+
+    # Take a screenshot using CDP
+    result = execute_cdp_method(browser, page, "Page.captureScreenshot")
+    # result.result.data contains base64-encoded PNG
+
 finally
     # Clean up when done
     close_page(browser, page)
