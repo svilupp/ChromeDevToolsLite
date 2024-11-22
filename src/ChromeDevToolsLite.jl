@@ -22,6 +22,7 @@ end
     Page(id::String, url::String, title::String)
 
 Represents a Chrome browser page/tab with its unique identifier, current URL, and title.
+Used with Browser to execute CDP methods and manage browser tabs.
 """
 struct Page
     id::String
@@ -30,7 +31,7 @@ struct Page
 end
 
 # Core functions
-export Browser, Page
+export Browser, Page, execute_cdp_method
 export connect_browser, new_page, get_pages, close_page
 
 """
@@ -86,6 +87,49 @@ Close a page/tab.
 """
 function close_page(browser::Browser, page::Page)
     HTTP.get("$(browser.endpoint)/json/close/$(page.id)")
+end
+
+"""
+    execute_cdp_method(browser::Browser, page::Page, method::String, params::Dict=Dict()) -> Dict
+
+Execute a Chrome DevTools Protocol method on a specific page via HTTP.
+
+# Arguments
+- `browser::Browser`: The browser instance
+- `page::Page`: The page to execute the method on
+- `method::String`: The CDP method name (e.g., "Page.navigate")
+- `params::Dict`: Parameters for the CDP method (optional)
+
+# Example
+```julia
+# Navigate to a URL
+execute_cdp_method(browser, page, "Page.navigate", Dict("url" => "https://example.com"))
+
+# Execute JavaScript
+execute_cdp_method(browser, page, "Runtime.evaluate", Dict(
+    "expression" => "document.title",
+    "returnByValue" => true
+))
+```
+"""
+function execute_cdp_method(browser::Browser, page::Page, method::String, params::Dict=Dict())
+    endpoint = "$(browser.endpoint)/json/protocol/$(page.id)"
+
+    payload = Dict(
+        "method" => method,
+        "params" => params,
+        "id" => 1  # Request ID, could be made dynamic if needed
+    )
+
+    headers = ["Content-Type" => "application/json"]
+    response = HTTP.post(endpoint, headers, JSON3.write(payload))
+
+    result = JSON3.read(String(response.body))
+    if haskey(result, "error")
+        error("CDP Error: $(result.error)")
+    end
+
+    return result
 end
 
 """

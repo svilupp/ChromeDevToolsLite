@@ -6,6 +6,7 @@ connect_browser
 get_pages
 new_page
 close_page
+execute_cdp_method
 Base.show(::IO, ::Browser)
 ```
 
@@ -21,7 +22,14 @@ try
     # Create a new page
     page = new_page(browser)
 
-    # Do some work...
+    # Navigate to a website using CDP
+    execute_cdp_method(browser, page, "Page.navigate", Dict("url" => "https://example.com"))
+
+    # Execute JavaScript using CDP
+    result = execute_cdp_method(browser, page, "Runtime.evaluate", Dict(
+        "expression" => "document.title",
+        "returnByValue" => true
+    ))
 finally
     # Clean up when done
     close_page(browser, page)

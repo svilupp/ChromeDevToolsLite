@@ -16,12 +16,13 @@ makedocs(;
     pages=[
         "Home" => "index.md",
         "Getting Started" => "getting_started.md",
-        "API Reference" => [
-            "Browser" => "api/browser.md",
-            "Page" => "api/page.md"
-        ],
-        "Examples" => "examples.md",
+        "API Reference" => "api/browser.md",
     ],
+    source="src",
+    build="build",
+    clean=true,  # Clean build directory
+    doctest=true,
+    checkdocs=:all,
 )
 
 deploydocs(;

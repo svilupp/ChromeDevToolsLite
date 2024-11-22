@@ -39,7 +39,7 @@ finally
 end
 ```
 
-See the [Browser](@ref) and [Page](@ref) API documentation for more details.
+See the [Browser](@ref) API documentation for more details.
 
 ```@index
 ```
