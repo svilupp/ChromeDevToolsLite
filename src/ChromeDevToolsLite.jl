@@ -125,11 +125,17 @@ function execute_cdp_method(browser::Browser, page::Page, method::String, params
     response = HTTP.post(endpoint, headers, JSON3.write(payload))
 
     result = JSON3.read(String(response.body))
+
     if haskey(result, "error")
         error("CDP Error: $(result.error)")
     end
 
-    return result
+    # Some CDP methods don't return a result
+    if !haskey(result, "result")
+        return Dict()
+    end
+
+    return result.result
 end
 
 """
