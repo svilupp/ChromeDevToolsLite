@@ -19,7 +19,8 @@ makedocs(;
             "Browser" => "api/browser.md",
             "BrowserContext" => "api/browser_context.md",
             "Page" => "api/page.md",
-            "ElementHandle" => "api/element_handle.md"
+            "ElementHandle" => "api/element_handle.md",
+            "Utilities" => "api/utilities.md"
         ],
         "Examples" => "examples.md",
         "Contributing" => "contributing.md"
