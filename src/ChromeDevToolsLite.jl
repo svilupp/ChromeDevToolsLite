@@ -15,9 +15,6 @@ abstract type AbstractWebSocketConnection end
 # Export abstract types
 export AbstractBrowser, AbstractBrowserContext, AbstractPage, AbstractElementHandle, AbstractWebSocketConnection
 
-# Export Base operations
-export Base.close, Base.show
-
 # Types
 export Browser, BrowserContext, Page, ElementHandle,
        create_page, goto, url, get_title, screenshot,
@@ -47,5 +44,8 @@ include("types/element_handle.jl")
 include("page/file_input.jl")
 include("page/selectors.jl")  # Add selectors.jl after page.jl
 include("base_operations.jl")  # Include Base operations implementations
+
+# Export Base operations
+export Base.close, Base.show
 
 end
