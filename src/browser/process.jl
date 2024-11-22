@@ -11,8 +11,8 @@ Represents a running browser process with its debugging endpoint and configurati
 """
 struct BrowserProcess
     pid::Int
-    endpoint::String
-    options::AbstractDict{String, <:Any}
+    endpoint::AbstractString
+    options::AbstractDict{AbstractString,<:Any}
 end
 
 """
@@ -55,7 +55,7 @@ const DEFAULT_ARGS = [
 ]
 
 """
-    find_chrome() -> String
+    find_chrome() -> AbstractString
 
 Find the Chrome/Chromium executable path.
 """
@@ -153,7 +153,7 @@ function launch_browser_process(;headless::Bool=true, port::Union{Int,Nothing}=n
                 return BrowserProcess(
                     pid,
                     endpoint,
-                    Dict{String,Any}("headless" => headless, "verbose" => verbose)
+                    Dict{AbstractString,<:Any}("headless" => headless, "verbose" => verbose)
                 )
             end
         catch e
