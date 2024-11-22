@@ -4,7 +4,7 @@ using HTTP
 # Start HTTP server to serve our test page
 server = HTTP.serve!("127.0.0.1", 8125) do request
     if request.target == "/"
-        return HTTP.Response(200, read("examples/test_pages/form.html"))
+        return HTTP.Response(200, read("test/test_pages/form.html"))
     end
     return HTTP.Response(404)
 end

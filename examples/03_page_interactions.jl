@@ -6,7 +6,7 @@ context = new_context(browser)
 page = create_page(context)
 
 # Navigate to our test form
-goto(page, "file:///home/ubuntu/ChromeDevToolsLite/examples/test_pages/form.html")
+goto(page, "file:///home/ubuntu/ChromeDevToolsLite/test/test_pages/form.html")
 
 # Test type_text
 println("Testing type_text...")

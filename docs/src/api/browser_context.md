@@ -29,7 +29,7 @@ Close the context and all its associated pages.
 
 ```julia
 # From examples/17_browser_context_test.jl
-browser = Browser()
+browser = launch_browser()
 
 # Create multiple contexts
 context1 = new_context(browser)
@@ -46,7 +46,7 @@ goto(page1, "https://example.com")
 goto(page2, "https://google.com")
 
 # Cleanup contexts
-close_context(context1)
+close(context1)
 ```
 
 ## Error Handling
@@ -71,6 +71,6 @@ catch e
     end
 finally
     # Always clean up resources
-    close_context(context)
+    close(context)
 end
 ```

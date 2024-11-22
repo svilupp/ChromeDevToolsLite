@@ -23,7 +23,7 @@ using ChromeDevToolsLite
 # Launch browser and navigate
 browser = launch_browser()
 context = new_context(browser)
-page = create_page(context)
+page = new_page(context)
 
 try
     # Navigate and wait for content

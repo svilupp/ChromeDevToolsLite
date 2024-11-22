@@ -6,7 +6,7 @@ using Base64
 # Start a simple HTTP server for our test page
 const TEST_PORT = 8123
 server = HTTP.serve!("127.0.0.1", TEST_PORT) do request
-    return HTTP.Response(200, read("/home/ubuntu/ChromeDevToolsLite/examples/test_pages/basic.html"))
+    return HTTP.Response(200, read("/home/ubuntu/ChromeDevToolsLite/test/test_pages/basic.html"))
 end
 
 @info "Starting page navigation test..."

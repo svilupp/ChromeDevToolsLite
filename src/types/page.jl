@@ -8,43 +8,45 @@ using Base64
 
 Represents a single tab or page in the browser.
 """
-mutable struct Page <: AbstractPage
+Base.@kwdef mutable struct Page <: AbstractPage
     context::AbstractBrowserContext
     session_id::String
     target_id::String
-    options::Dict{String, Any}
+    options::Dict{String,<:Any} = Dict{String,Any}()
+    verbose::Bool = false
+end
 
-    # Default constructor that creates a new page in the context
-    function Page(context::AbstractBrowserContext)
-        return create_page(context)
-    end
+# Default constructor that creates a new page in the context
+function Page(context::AbstractBrowserContext)
+    return create_page(context)
+end
 
-    # Full constructor
-    function Page(context::AbstractBrowserContext, session_id::String, target_id::String, options::Dict{String, Any}=Dict{String, Any}())
-        page = new(context, session_id, target_id, options)
-        # Enable required domains with timeout
-        for domain in ["Page", "Runtime", "DOM"]
-            enable_message = Dict{String,Any}(
-                "sessionId" => session_id,
-                "method" => "$(domain).enable",
-                "params" => Dict(),
-                "id" => get_next_message_id()
-            )
-            response_channel = send_message(context.browser.session, enable_message, timeout=10000)  # 10 second timeout
-            try
-                response = take!(response_channel)
-                if !isnothing(response.error)
-                    error("Failed to enable $domain domain: $(response.error["message"])")
-                end
-            catch e
-                if e isa InvalidStateException
-                    error("Timeout while enabling $domain domain")
-                end
-                rethrow(e)
+# Full constructor
+function Page(context::AbstractBrowserContext, session_id::String, target_id::String,
+             options::AbstractDict{String,<:Any}=Dict{String,Any}(); verbose::Bool=false)
+    page = new(context, session_id, target_id, Dict{String,Any}(options), verbose)
+    # Enable required domains with timeout
+    for domain in ["Page", "Runtime", "DOM"]
+        enable_message = Dict{String,<:Any}(
+            "sessionId" => session_id,
+            "method" => "$(domain).enable",
+            "params" => Dict(),
+            "id" => get_next_message_id()
+        )
+        response_channel = send_message(context.browser.session, enable_message, timeout=10000)  # 10 second timeout
+        try
+            response = take!(response_channel)
+            if !isnothing(response.error)
+                error("Failed to enable $domain domain: $(response.error["message"])")
             end
+        catch e
+            if e isa InvalidStateException
+                error("Timeout while enabling $domain domain")
+            end
+            rethrow(e)
         end
-        return page
     end
+    return page
 end
 
 """
@@ -61,13 +63,13 @@ end
 
 Navigate the page to the specified URL and wait for navigation to complete.
 """
-function goto(page::Page, url::String; options=Dict{String,Any}())
+function goto(page::Page, url::String; options::AbstractDict{String,<:Any}=Dict{String,Any}())
     # Create a channel to track navigation completion
     nav_channel = Channel{Bool}(1)
 
     # Register navigation event listener
     callback = params -> begin
-        @info "Navigation event received" params
+        page.verbose && @info "Navigation event received" params
         try
             put!(nav_channel, true)
         catch e
@@ -79,9 +81,9 @@ function goto(page::Page, url::String; options=Dict{String,Any}())
 
     try
         # Send navigation request
-        params = Dict{String,Any}("url" => url)
+        params = Dict{String,<:Any}("url" => url)
         request = create_cdp_message("Page.navigate", merge(params, options))
-        message = Dict{String,Any}(
+        message = Dict{String,<:Any}(
             "sessionId" => page.session_id,
             "method" => request.method,
             "params" => request.params,
@@ -96,9 +98,9 @@ function goto(page::Page, url::String; options=Dict{String,Any}())
         end
 
         # Wait for navigation to complete
-        @info "Waiting for navigation to complete..."
+        page.verbose && @info "Waiting for navigation to complete..."
         take!(nav_channel)
-        @info "Navigation completed"
+        page.verbose && @info "Navigation completed"
 
     finally
         remove_event_listener(page.context.browser.session, "Page.frameNavigated", callback)
@@ -118,10 +120,10 @@ function wait_for_load(page::Page; timeout::Int=30000)
 
     # Create event handler
     callback = params -> begin
-        @info "Load event callback triggered" params
+        page.verbose && @info "Load event callback triggered" params
         try
             put!(load_channel, true)
-            @info "Load event signaled"
+            page.verbose && @info "Load event signaled"
         catch e
             @error "Failed to signal load event" exception=e
         end
@@ -129,9 +131,9 @@ function wait_for_load(page::Page; timeout::Int=30000)
 
     # Register event listener first
     event_name = "Page.loadEventFired"
-    @info "Registering load event listener..." event_name
+    page.verbose && @info "Registering load event listener..." event_name
     add_event_listener(page.context.browser.session, event_name, callback)
-    @info "Load event listener registered"
+    page.verbose && @info "Load event listener registered"
 
     # Enable Page events if not already enabled
     message = Dict{String,Any}(
@@ -141,10 +143,10 @@ function wait_for_load(page::Page; timeout::Int=30000)
         "id" => get_next_message_id()
     )
 
-    @info "Enabling Page events..."
+    page.verbose && @info "Enabling Page events..."
     response_channel = send_message(page.context.browser.session, message)
     response = take!(response_channel)
-    @info "Page events enabled" response
+    page.verbose && @info "Page events enabled" response
 
     result = try
         # Create timeout task
@@ -156,9 +158,9 @@ function wait_for_load(page::Page; timeout::Int=30000)
             close(load_channel)
         end
 
-        @info "Waiting for load event..."
+        page.verbose && @info "Waiting for load event..."
         result = take!(load_channel)
-        @info "Load event received" result
+        page.verbose && @info "Load event received" result
 
         # Clean up timeout task if it hasn't completed
         if !istaskdone(timeout_task)
@@ -178,9 +180,9 @@ function wait_for_load(page::Page; timeout::Int=30000)
         end
     finally
         # Clean up event listener
-        @info "Cleaning up event listener..."
+        page.verbose && @info "Cleaning up event listener..."
         remove_event_listener(page.context.browser.session, event_name, callback)
-        @info "Event listener cleaned up"
+        page.verbose && @info "Event listener cleaned up"
     end
 
     nothing
@@ -192,6 +194,8 @@ end
 Evaluates JavaScript code in the context of the page.
 """
 function evaluate(page::Page, expression::String)
+    page.verbose && @info "Evaluating JavaScript expression" expression
+
     # Only wrap in async IIFE if not already wrapped
     if !contains(expression, "async") && !contains(expression, "=>")
         # Wrap the code in a function if it contains return statements
@@ -224,8 +228,10 @@ function evaluate(page::Page, expression::String)
         "id" => get_next_message_id()
     )
 
+    page.verbose && @info "Sending evaluation request"
     response_channel = send_message(page.context.browser.session, message)
     response = take!(response_channel)
+    page.verbose && @info "Received evaluation response"
 
     if !isnothing(response.error)
         error("Evaluation failed: $(response.error["message"])")
@@ -277,6 +283,8 @@ end
 Returns the first element matching the selector.
 """
 function query_selector(page::Page, selector::String)
+    page.verbose && @info "Querying selector" selector
+
     # First get the document root
     root_request = create_cdp_message("DOM.getDocument", Dict{String,Any}())
     root_message = Dict{String,Any}(
@@ -285,8 +293,10 @@ function query_selector(page::Page, selector::String)
         "params" => root_request.params,
         "id" => root_request.id
     )
+    page.verbose && @info "Getting document root"
     root_response_channel = send_message(page.context.browser.session, root_message)
     root_response = take!(root_response_channel)
+    page.verbose && @info "Received document root"
 
     if !isnothing(root_response.error)
         error("Failed to get document root: $(root_response.error["message"])")
@@ -295,6 +305,7 @@ function query_selector(page::Page, selector::String)
     root_node_id = root_response.result["root"]["nodeId"]
 
     # Then query the selector
+    page.verbose && @info "Querying DOM for selector"
     params = Dict{String,Any}("nodeId" => root_node_id, "selector" => selector)
     request = create_cdp_message("DOM.querySelector", params)
     message = Dict{String,Any}(
@@ -306,6 +317,7 @@ function query_selector(page::Page, selector::String)
 
     response_channel = send_message(page.context.browser.session, message)
     response = take!(response_channel)
+    page.verbose && @info "Received selector query response"
 
     if !isnothing(response.error)
         error("Query selector failed: $(response.error["message"])")
@@ -335,8 +347,10 @@ end
 
 Takes a screenshot of the page and returns it as a base64-encoded string.
 """
-function screenshot(page::Page; options=Dict())
-    params = Dict(
+function screenshot(page::Page; options::AbstractDict{String,<:Any}=Dict{String,Any}())
+    page.verbose && @info "Taking screenshot" options
+
+    params = Dict{String,<:Any}(
         "format" => get(options, "format", "png"),
         "quality" => get(options, "quality", 100),
         "fromSurface" => get(options, "fromSurface", true)
@@ -347,8 +361,10 @@ function screenshot(page::Page; options=Dict())
         "params" => params,
         "id" => get_next_message_id()
     )
+    page.verbose && @info "Sending screenshot request"
     response_channel = send_message(page.context.browser.session, message)
     response = take!(response_channel)
+    page.verbose && @info "Received screenshot response"
 
     if !isnothing(response.error)
         error("Screenshot failed: $(response.error["message"])")
@@ -362,15 +378,17 @@ end
 
 Takes a screenshot of the page and saves it to the specified path.
 """
-function screenshot(page::Page, path::String; options=Dict())
+function screenshot(page::Page, path::String; options::AbstractDict{String,<:Any}=Dict{String,Any}())
+    page.verbose && @info "Taking screenshot and saving to path" path options
     data = screenshot(page; options)
     decoded_data = Base64.base64decode(data)
     write(path, decoded_data)
+    page.verbose && @info "Screenshot saved successfully" path
     nothing
 end
 
 function evaluate_script(page::Page, script::String, args::Vector=[])
-    response = send_message(page.session, "Runtime.evaluate", Dict(
+    response = send_message(page.session, "Runtime.evaluate", Dict{String,<:Any}(
         "expression" => script,
         "arguments" => args,
         "returnByValue" => true,
@@ -412,7 +430,10 @@ end
 Returns all elements matching the selector.
 """
 function query_selector_all(page::Page, selector::String)
+    page.verbose && @info "Querying all elements matching selector" selector
+
     # First get the document root
+    page.verbose && @info "Getting document root"
     root_request = create_cdp_message("DOM.getDocument", Dict{String,Any}())
     root_message = Dict{String,Any}(
         "sessionId" => page.session_id,
@@ -429,6 +450,7 @@ function query_selector_all(page::Page, selector::String)
 
     root_node_id = root_response.result["root"]["nodeId"]
 
+    page.verbose && @info "Querying all matching elements"
     # Query all matching elements
     params = Dict{String,Any}("nodeId" => root_node_id, "selector" => selector)
     request = create_cdp_message("DOM.querySelectorAll", params)
@@ -446,6 +468,7 @@ function query_selector_all(page::Page, selector::String)
         error("Query selector all failed: $(response.error["message"])")
     end
 
+    page.verbose && @info "Creating element handles"
     # Create ElementHandle objects for each node
     elements = ElementHandle[]
     for node_id in response.result["nodeIds"]
@@ -454,6 +477,7 @@ function query_selector_all(page::Page, selector::String)
         end
     end
 
+    page.verbose && @info "Found elements" count=length(elements)
     return elements
 end
 
@@ -529,7 +553,8 @@ end
 Clicks an element matching the selector.
 """
 function click(page::Page, selector::String; options=Dict())
-    evaluate(page, """
+    page.verbose && @info "Clicking element" selector
+    result = evaluate(page, """
     const element = document.querySelector('$(selector)');
     if (element) {
         element.click();
@@ -537,6 +562,8 @@ function click(page::Page, selector::String; options=Dict())
     }
     return false;
     """)
+    page.verbose && @info "Click operation completed" success=result
+    nothing
 end
 
 """
@@ -545,11 +572,13 @@ end
 Types text into an element matching the selector.
 """
 function type_text(page::Page, selector::String, text::String; options=Dict())
+    page.verbose && @info "Typing text into element" selector text
     element = wait_for_selector(page, selector)
     if isnothing(element)
         error("Element not found: $selector")
     end
 
+    page.verbose && @info "Element found, typing text"
     # Focus and type using JavaScript evaluation
     js_code = """
     (() => {
@@ -569,6 +598,7 @@ function type_text(page::Page, selector::String, text::String; options=Dict())
     if isnothing(result) || result != text
         error("Failed to type text: expected '$(text)', got '$(result)'")
     end
+    page.verbose && @info "Text typed successfully"
     nothing
 end
 
@@ -578,6 +608,7 @@ end
 Simulates pressing a keyboard key. The key should be a valid key value like "Enter", "Tab", "ArrowLeft", etc.
 """
 function press_key(page::Page, key::String; options=Dict())
+    page.verbose && @info "Pressing key" key
     params = Dict(
         "type" => "keyDown",
         "key" => key
@@ -589,6 +620,7 @@ function press_key(page::Page, key::String; options=Dict())
     if !isnothing(response.error)
         error("Key press failed: $(response.error["message"])")
     end
+    page.verbose && @info "Key press completed successfully" key
     nothing
 end
 
@@ -598,6 +630,7 @@ end
 Selects an option in a select element matching the selector.
 """
 function select_option(page::Page, selector::String, value::String; options=Dict())
+    page.verbose && @info "Selecting option in select element" selector value
     result = evaluate(page, """(function() {
         const select = document.querySelector('$(selector)');
         if (!select) return false;
@@ -611,6 +644,7 @@ function select_option(page::Page, selector::String, value::String; options=Dict
     if !result
         error("Failed to select option: $value in element: $selector")
     end
+    page.verbose && @info "Option selected successfully" selector value
     nothing
 end
 
@@ -625,6 +659,7 @@ export click, type_text, press_key, select_option
 Ensures proper cleanup of page resources.
 """
 function Base.close(page::Page)
+    page.verbose && @info "Closing page" target_id=page.target_id
     params = Dict{String,Any}("targetId" => page.target_id)
     request = create_cdp_message("Target.closeTarget", params)
     response_channel = send_message(page.context.browser.session, request)
@@ -646,6 +681,7 @@ Submits a form element matching the selector.
 Returns true if successful, false otherwise.
 """
 function submit_form(page::Page, selector::String)
+    page.verbose && @info "Submitting form" selector
     evaluate(page, """(() => {
         const form = document.querySelector('$(selector)');
         if (!form) return false;

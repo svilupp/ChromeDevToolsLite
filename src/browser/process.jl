@@ -7,7 +7,7 @@ using Sockets, HTTP, JSON3
 struct BrowserProcess
     pid::Int
     endpoint::String
-    options::Dict{String, Any}
+    options::AbstractDict{String, Any}
 end
 
 const DEFAULT_ARGS = [

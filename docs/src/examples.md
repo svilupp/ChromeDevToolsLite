@@ -5,9 +5,9 @@ This guide showcases practical examples from our test suite demonstrating variou
 ## Browser and Page Management
 ```julia
 # From examples/00_browser_test.jl
-browser = Browser()
+browser = launch_browser()
 context = new_context(browser)
-page = create_page(context)
+page = new_page(context)
 
 try
     goto(page, "https://example.com")
@@ -27,7 +27,6 @@ form_data = Dict(
     "#country" => "US",
     "#terms" => true
 )
-```
 
 for (selector, value) in form_data
     element = query_selector(page, selector)

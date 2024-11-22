@@ -7,8 +7,8 @@ using ..ChromeDevToolsLite: TimeoutError, retry_with_timeout
 
 mutable struct CDPSession
     ws::AbstractWebSocketConnection
-    callbacks::Dict{Int, Channel{CDPResponse}}
-    event_listeners::Dict{String, Vector{Function}}
+    callbacks::AbstractDict{Int, Channel{CDPResponse}}
+    event_listeners::AbstractDict{String, Vector{Function}}
     lock::ReentrantLock
     is_closed::Ref{Bool}
 end
@@ -39,7 +39,7 @@ end
 Send a CDP request and return a channel that will receive the response.
 Throws ConnectionError if the session is closed.
 """
-function send_message(session::CDPSession, msg::Union{CDPRequest,Dict{String,Any}}; timeout::Int=5000)
+function send_message(session::CDPSession, msg::Union{CDPRequest,AbstractDict{String,Any}}; timeout::Int=5000)
     if session.is_closed[]
         throw(ConnectionError("Cannot send message: CDP session is closed"))
     end
@@ -122,7 +122,7 @@ function process_messages(session::CDPSession)
             data = try
                 message = read(session.ws)
                 @info "Received CDP message: $message"
-                JSON3.read(message, Dict{String, Any})
+                JSON3.read(message, Dict{String, Any})  # Keep Dict here as it's the concrete type from JSON3
             catch e
                 if session.is_closed[]
                     break

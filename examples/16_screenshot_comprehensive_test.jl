@@ -10,7 +10,7 @@ screenshot_dir = mkpath(joinpath(pwd(), "test_screenshots"))
 
 try
     # Navigate to our test page with multiple elements
-    goto(page, "file:///home/ubuntu/ChromeDevToolsLite/examples/test_pages/multiple_elements.html")
+    goto(page, "file:///home/ubuntu/ChromeDevToolsLite/test/test_pages/multiple_elements.html")
 
     # Test 1: Full page screenshot
     println("Test 1: Taking full page screenshot...")

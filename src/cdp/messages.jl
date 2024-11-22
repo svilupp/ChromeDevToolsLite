@@ -10,18 +10,18 @@ abstract type AbstractCDPMessage end
 struct CDPRequest <: AbstractCDPMessage
     id::Int
     method::String
-    params::Dict{String, Any}
+    params::AbstractDict{String, Any}
 end
 
 struct CDPResponse <: AbstractCDPMessage
     id::Int
-    result::Union{Dict{String, Any}, Nothing}
-    error::Union{Dict{String, Any}, Nothing}
+    result::Union{AbstractDict{String, Any}, Nothing}
+    error::Union{AbstractDict{String, Any}, Nothing}
 end
 
 struct CDPEvent <: AbstractCDPMessage
     method::String
-    params::Dict{String, Any}
+    params::AbstractDict{String, Any}
 end
 
 # Message Creation
@@ -30,7 +30,7 @@ end
 
 Create a new CDP request message with an automatically generated ID.
 """
-function create_cdp_message(method::String, params::Dict{String, Any}=Dict())
+function create_cdp_message(method::String, params::AbstractDict{String, Any}=Dict{String, Any}())
     id = Base.Threads.atomic_add!(MESSAGE_ID_COUNTER, 1)
     CDPRequest(id, method, params)
 end
@@ -65,10 +65,10 @@ end
 
 Parse a raw CDP message into the appropriate message type.
 """
-function parse_cdp_message(data::Dict{String, Any})
+function parse_cdp_message(data::AbstractDict{String, Any})
     if haskey(data, "id")
         if haskey(data, "method")
-            return CDPRequest(data["id"], data["method"], get(data, "params", Dict()))
+            return CDPRequest(data["id"], data["method"], get(data, "params", Dict{String, Any}()))
         else
             return CDPResponse(
                 data["id"],
@@ -77,7 +77,7 @@ function parse_cdp_message(data::Dict{String, Any})
             )
         end
     else
-        return CDPEvent(data["method"], get(data, "params", Dict()))
+        return CDPEvent(data["method"], get(data, "params", Dict{String, Any}()))
     end
 end
 
