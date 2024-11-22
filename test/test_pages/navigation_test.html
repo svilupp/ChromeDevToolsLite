@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Navigation Test Page</title>
+</head>
+<body>
+    <h1>Navigation Test Page</h1>
+    <div id="content" data-loaded="false">This is a test page for navigation events</div>
+    <script>
+        // Add a delay to simulate page load
+        window.addEventListener('load', () => {
+            const content = document.getElementById('content');
+            content.textContent = 'Page Loaded Successfully';
+            content.dataset.loaded = 'true';
+        });
+    </script>
+</body>
+</html>

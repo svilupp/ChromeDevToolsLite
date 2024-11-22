@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Form Interaction Test</title>
+    <style>
+        .hidden { display: none; }
+        .visible { display: block; }
+    </style>
+</head>
+<body>
+    <form id="test-form">
+        <input type="text" id="text-input" placeholder="Enter text">
+        <input type="checkbox" id="check-input">
+        <select id="select-input">
+            <option value="1">Option 1</option>
+            <option value="2">Option 2</option>
+        </select>
+        <button type="submit" id="submit-btn">Submit</button>
+    </form>
+    <div id="result" class="hidden">Form Submitted!</div>
+    <script>
+        document.getElementById('test-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            document.getElementById('result').className = 'visible';
+        });
+    </script>
+</body>
+</html>
