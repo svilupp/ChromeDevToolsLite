@@ -19,7 +19,7 @@ try
         "returnByValue" => true
     ))
 
-    println("Found paragraphs:", result.value)
+    println("Found paragraphs:", get(result, "value", nothing))
 
     # Click a button (if it exists)
     execute_cdp_method(browser, page, "Runtime.evaluate", Dict(
@@ -43,8 +43,9 @@ try
     # Take a screenshot
     result = execute_cdp_method(browser, page, "Page.captureScreenshot")
     # Save screenshot to file
+    using Base64
     open("screenshot.png", "w") do io
-        write(io, base64decode(result.data))
+        write(io, base64decode(get(result, "data", "")))
     end
 finally
     # Clean up
