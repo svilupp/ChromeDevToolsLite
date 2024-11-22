@@ -4,47 +4,25 @@
 Page
 ```
 
-The `Page` type represents a single page/tab in the Chrome browser.
-
-## Core Methods
-
-```@docs
-get_pages
-new_page
-close_page
-```
+The `Page` type represents a single page/tab in the Chrome browser. It is a simple struct that holds the page's ID, URL, and title.
 
 ## Examples
 
 ```julia
-# Basic page management
+# Example of working with a Page
 browser = connect_browser()
 
-try
-    # List all pages
-    pages = get_pages(browser)
-    println("Current pages: ", length(pages))
-
-    # Create a new page
-    page = new_page(browser)
-    println("Created new page with ID: $(page.id)")
-
-    # List pages again to see the new one
-    updated_pages = get_pages(browser)
-    println("Updated pages count: ", length(updated_pages))
-
-    # Clean up
-    close_page(browser, page)
-finally
-    # Make sure to clean up any remaining pages
-    for page in get_pages(browser)
-        close_page(browser, page)
-    end
+# Get all pages and print their information
+pages = get_pages(browser)
+for page in pages
+    println("Page ID: $(page.id)")
+    println("URL: $(page.url)")
+    println("Title: $(page.title)")
 end
 ```
 
-## Error Handling
+## Fields
 
-Page operations can throw:
-- `HTTP.RequestError`: When there are issues with the HTTP connection
-- `ErrorException`: When Chrome is not running or the endpoint is incorrect
+- `id::String`: The unique identifier for the page
+- `url::String`: The current URL of the page
+- `title::String`: The current title of the page
