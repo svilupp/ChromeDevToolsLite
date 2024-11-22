@@ -15,9 +15,12 @@ abstract type AbstractWebSocketConnection end
 # Export abstract types
 export AbstractBrowser, AbstractBrowserContext, AbstractPage, AbstractElementHandle, AbstractWebSocketConnection
 
+# Export Base operations
+export Base.close, Base.show
+
 # Types
 export Browser, BrowserContext, Page, ElementHandle,
-       create_page, close, goto, url, get_title, screenshot,
+       create_page, goto, url, get_title, screenshot,
        is_visible, count_elements, get_text, get_value, is_checked, select_option, submit_form,
        set_file_input_files
 
