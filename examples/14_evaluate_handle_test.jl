@@ -14,7 +14,7 @@ using Test
     </html>
     """
 
-    test_file = "test_pages/evaluate_handle_test.html"
+    test_file = joinpath(@__DIR__, "..", "test", "test_pages", "evaluate_handle_test.html")
     mkpath(dirname(test_file))
     write(test_file, html_content)
 
@@ -24,7 +24,7 @@ using Test
     page = new_page(context)
 
     # Navigate to the test file
-    file_url = "file://$(abspath(test_file))"
+    file_url = "file://" * test_file
     goto(page, file_url)
 
     println("Testing evaluate_handle functionality...")

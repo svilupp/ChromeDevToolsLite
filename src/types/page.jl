@@ -24,7 +24,8 @@ end
 # Full constructor
 function Page(context::AbstractBrowserContext, session_id::String, target_id::String,
              options::AbstractDict{String,<:Any}=Dict{String,Any}(); verbose::Bool=false)
-    page = new(context, session_id, target_id, Dict{String,Any}(options), verbose)
+    page = Page(context=context, session_id=session_id, target_id=target_id,
+                options=Dict{String,Any}(options), verbose=verbose)
     # Enable required domains with timeout
     for domain in ["Page", "Runtime", "DOM"]
         enable_message = Dict{String,<:Any}(
@@ -136,7 +137,7 @@ function wait_for_load(page::Page; timeout::Int=30000)
     page.verbose && @info "Load event listener registered"
 
     # Enable Page events if not already enabled
-    message = Dict{String,Any}(
+    message = Dict{String,<:Any}(
         "sessionId" => page.session_id,
         "method" => "Page.enable",
         "params" => Dict(),
@@ -215,13 +216,13 @@ function evaluate(page::Page, expression::String)
         """
     end
 
-    params = Dict{String,Any}(
+    params = Dict{String,<:Any}(
         "expression" => expression,
         "returnByValue" => true,
         "awaitPromise" => true  # This tells CDP to wait for Promise resolution
     )
 
-    message = Dict{String,Any}(
+    message = Dict{String,<:Any}(
         "sessionId" => page.session_id,
         "method" => "Runtime.evaluate",
         "params" => params,
@@ -286,8 +287,8 @@ function query_selector(page::Page, selector::String)
     page.verbose && @info "Querying selector" selector
 
     # First get the document root
-    root_request = create_cdp_message("DOM.getDocument", Dict{String,Any}())
-    root_message = Dict{String,Any}(
+    root_request = create_cdp_message("DOM.getDocument", Dict{String,<:Any}())
+    root_message = Dict{String,<:Any}(
         "sessionId" => page.session_id,
         "method" => root_request.method,
         "params" => root_request.params,
@@ -306,9 +307,9 @@ function query_selector(page::Page, selector::String)
 
     # Then query the selector
     page.verbose && @info "Querying DOM for selector"
-    params = Dict{String,Any}("nodeId" => root_node_id, "selector" => selector)
+    params = Dict{String,<:Any}("nodeId" => root_node_id, "selector" => selector)
     request = create_cdp_message("DOM.querySelector", params)
-    message = Dict{String,Any}(
+    message = Dict{String,<:Any}(
         "sessionId" => page.session_id,
         "method" => request.method,
         "params" => request.params,
@@ -337,7 +338,7 @@ function query_selector(page::Page, selector::String)
         })()
         """
         evaluate(page, js_code)
-        return ElementHandle(page, node_id, Dict{String,Any}())
+        return ElementHandle(page, node_id, Dict{String,<:Any}())
     end
     return nothing
 end
@@ -355,7 +356,7 @@ function screenshot(page::Page; options::AbstractDict{String,<:Any}=Dict{String,
         "quality" => get(options, "quality", 100),
         "fromSurface" => get(options, "fromSurface", true)
     )
-    message = Dict{String,Any}(
+    message = Dict{String,<:Any}(
         "sessionId" => page.session_id,
         "method" => "Page.captureScreenshot",
         "params" => params,
@@ -434,8 +435,8 @@ function query_selector_all(page::Page, selector::String)
 
     # First get the document root
     page.verbose && @info "Getting document root"
-    root_request = create_cdp_message("DOM.getDocument", Dict{String,Any}())
-    root_message = Dict{String,Any}(
+    root_request = create_cdp_message("DOM.getDocument", Dict{String,<:Any}())
+    root_message = Dict{String,<:Any}(
         "sessionId" => page.session_id,
         "method" => root_request.method,
         "params" => root_request.params,
@@ -452,9 +453,9 @@ function query_selector_all(page::Page, selector::String)
 
     page.verbose && @info "Querying all matching elements"
     # Query all matching elements
-    params = Dict{String,Any}("nodeId" => root_node_id, "selector" => selector)
+    params = Dict{String,<:Any}("nodeId" => root_node_id, "selector" => selector)
     request = create_cdp_message("DOM.querySelectorAll", params)
-    message = Dict{String,Any}(
+    message = Dict{String,<:Any}(
         "sessionId" => page.session_id,
         "method" => request.method,
         "params" => request.params,
@@ -473,7 +474,7 @@ function query_selector_all(page::Page, selector::String)
     elements = ElementHandle[]
     for node_id in response.result["nodeIds"]
         if node_id != 0
-            push!(elements, ElementHandle(page, node_id, Dict{String,Any}()))
+            push!(elements, ElementHandle(page, node_id, Dict{String,<:Any}()))
         end
     end
 
@@ -552,7 +553,7 @@ end
 
 Clicks an element matching the selector.
 """
-function click(page::Page, selector::String; options=Dict())
+function click(page::Page, selector::String; options::AbstractDict{String,<:Any}=Dict{String,Any}())
     page.verbose && @info "Clicking element" selector
     result = evaluate(page, """
     const element = document.querySelector('$(selector)');
@@ -571,7 +572,7 @@ end
 
 Types text into an element matching the selector.
 """
-function type_text(page::Page, selector::String, text::String; options=Dict())
+function type_text(page::Page, selector::String, text::String; options::AbstractDict{String,<:Any}=Dict{String,Any}())
     page.verbose && @info "Typing text into element" selector text
     element = wait_for_selector(page, selector)
     if isnothing(element)
@@ -607,9 +608,9 @@ end
 
 Simulates pressing a keyboard key. The key should be a valid key value like "Enter", "Tab", "ArrowLeft", etc.
 """
-function press_key(page::Page, key::String; options=Dict())
+function press_key(page::Page, key::String; options::AbstractDict{String,<:Any}=Dict{String,Any}())
     page.verbose && @info "Pressing key" key
-    params = Dict(
+    params = Dict{String,<:Any}(
         "type" => "keyDown",
         "key" => key
     )
@@ -629,7 +630,7 @@ end
 
 Selects an option in a select element matching the selector.
 """
-function select_option(page::Page, selector::String, value::String; options=Dict())
+function select_option(page::Page, selector::String, value::String; options::AbstractDict{String,<:Any}=Dict{String,Any}())
     page.verbose && @info "Selecting option in select element" selector value
     result = evaluate(page, """(function() {
         const select = document.querySelector('$(selector)');
@@ -650,8 +651,14 @@ end
 
 export click, type_text, press_key, select_option
 
-# Export interaction functions
-export click, type_text, press_key, select_option
+"""
+    Base.show(io::IO, page::Page)
+
+Custom display for Page instances, showing the target ID and current URL.
+"""
+function Base.show(io::IO, page::Page)
+    print(io, "Page(target_id=$(page.target_id))")
+end
 
 """
     Base.close(page::Page)
@@ -660,7 +667,7 @@ Ensures proper cleanup of page resources.
 """
 function Base.close(page::Page)
     page.verbose && @info "Closing page" target_id=page.target_id
-    params = Dict{String,Any}("targetId" => page.target_id)
+    params = Dict{String,<:Any}("targetId" => page.target_id)
     request = create_cdp_message("Target.closeTarget", params)
     response_channel = send_message(page.context.browser.session, request)
     response = take!(response_channel)

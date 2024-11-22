@@ -1,7 +1,6 @@
 module ChromeDevToolsLite
 
-import HTTP.WebSockets
-using HTTP
+using WebSockets
 using JSON3
 using Sockets
 using Base64

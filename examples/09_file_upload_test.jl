@@ -38,13 +38,13 @@ html_content = """
 
 # Create a test file to upload
 test_content = "This is a test file content"
-test_upload_file = joinpath(pwd(), "examples", "test_pages", "test_upload.txt")
+test_upload_file = joinpath(@__DIR__, "..", "test", "test_pages", "test_upload.txt")
 write(test_upload_file, test_content)
 
 # Create and navigate to the test page
-test_page = joinpath(pwd(), "examples", "test_pages", "file_upload.html")
+test_page = joinpath(@__DIR__, "..", "test", "test_pages", "file_upload.html")
 write(test_page, html_content)
-goto(page, "file://$test_page")
+goto(page, "file://" * test_page)
 
 # Set file input
 set_file_input_files(page, "#file", [test_upload_file])

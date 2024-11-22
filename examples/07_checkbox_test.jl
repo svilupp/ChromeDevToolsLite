@@ -41,9 +41,9 @@ html_content = """
 </html>
 """
 
-test_file = joinpath(pwd(), "examples", "test_pages", "checkbox.html")
+test_file = joinpath(@__DIR__, "..", "test", "test_pages", "checkbox.html")
 write(test_file, html_content)
-goto(page, "file://$test_file")
+goto(page, "file://" * test_file)
 
 # Test initial state
 newsletter_checked = evaluate(page, "document.querySelector('#newsletter').checked")

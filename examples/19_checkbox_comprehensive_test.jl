@@ -25,11 +25,11 @@ context = new_context(browser)
 page = new_page(context)
 
 # Write test HTML
-test_file = "test_checkbox.html"
+test_file = joinpath(@__DIR__, "..", "test", "test_pages", "checkbox_test.html")
 write(test_file, html_content)
 
 try
-    goto(page, "file://$(pwd())/$test_file")
+    goto(page, "file://" * test_file)
 
     # Test 1: Check/uncheck simple checkbox
     println("Test 1: Basic check/uncheck...")

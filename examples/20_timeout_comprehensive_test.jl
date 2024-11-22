@@ -30,7 +30,7 @@ context = new_context(browser)
 page = new_page(context)
 
 # Write test HTML
-test_file = "test_timeout.html"
+test_file = joinpath(@__DIR__, "..", "test", "test_pages", "timeout_test.html")
 write(test_file, html_content)
 
 try
@@ -38,7 +38,7 @@ try
 
     # Test 1: wait_for_selector with successful timeout
     println("Test 1: wait_for_selector with adequate timeout")
-    goto(page, "file://$(pwd())/$test_file")
+    goto(page, "file://" * test_file)
     element = wait_for_selector(page, "#delayed", timeout=3000)
     @assert element !== nothing "Element should be found within timeout"
 

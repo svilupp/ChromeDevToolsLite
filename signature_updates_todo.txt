@@ -1,0 +1,31 @@
+# Files to Update Signatures
+
+## Core Types
+- [ ] src/types/types.jl (check abstract type definitions)
+- [ ] src/types/browser.jl
+- [ ] src/types/browser_context.jl
+- [ ] src/types/page.jl
+- [ ] src/types/element_handle.jl
+- [ ] src/types/websocket_interface.jl
+
+## CDP Implementation
+- [ ] src/cdp/messages.jl
+- [ ] src/cdp/session.jl
+
+## Page Operations
+- [ ] src/page/file_input.jl
+- [ ] src/page/selectors.jl
+
+## Utils
+- [ ] src/utils/errors.jl
+- [ ] src/utils/retry.jl
+- [ ] src/utils/timeout.jl
+
+## Main Module
+- [ ] src/ChromeDevToolsLite.jl
+
+Notes:
+- Update function signatures to use flexible types (e.g., AbstractDict{String,<:Any})
+- Keep concrete types for instantiations (e.g., Dict{String,Any})
+- Focus on Dict, String, and collection type signatures
+- Check for any HTTP.WebSockets imports to replace with WebSockets

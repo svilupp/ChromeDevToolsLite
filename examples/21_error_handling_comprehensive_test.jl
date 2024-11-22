@@ -21,7 +21,7 @@ context = new_context(browser)
 page = new_page(context)
 
 # Write test HTML
-test_file = "test_errors.html"
+test_file = joinpath(@__DIR__, "..", "test", "test_pages", "error_test.html")
 write(test_file, html_content)
 
 try
@@ -46,7 +46,7 @@ try
 
     # Test 3: EvaluationError
     println("Test 3: EvaluationError handling")
-    goto(page, "file://$(pwd())/$test_file")
+    goto(page, "file://" * test_file)
     try
         evaluate(page, "nonexistentFunction()")
     catch e

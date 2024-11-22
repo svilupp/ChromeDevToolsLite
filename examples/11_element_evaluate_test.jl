@@ -5,7 +5,7 @@ browser = Browser()
 context = BrowserContext(browser)
 page = Page(context)
 
-test_path = joinpath(@__DIR__, "test_pages", "element_evaluate.html")
+test_path = joinpath(@__DIR__, "..", "test", "test_pages", "element_evaluate.html")
 goto(page, "file://$test_path")
 
 # Test element property access

@@ -47,9 +47,9 @@ html_content = """
 </html>
 """
 
-test_file = joinpath(pwd(), "examples", "test_pages", "form_submission.html")
+test_file = joinpath(@__DIR__, "..", "test", "test_pages", "form_submission.html")
 write(test_file, html_content)
-goto(page, "file://$test_file")
+goto(page, "file://" * test_file)
 
 # Fill out the form
 type_text(page, "#username", "testuser123")

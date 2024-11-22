@@ -7,7 +7,7 @@ page = create_page(context)
 
 try
     # Get the absolute path to our test page
-    test_page_path = joinpath(dirname(@__FILE__), "test_pages", "form_submission.html")
+    test_page_path = joinpath(@__DIR__, "..", "test", "test_pages", "form_submission.html")
     test_page_url = "file://" * test_page_path
 
     @info "Starting form submission test..."

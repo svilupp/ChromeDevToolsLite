@@ -6,10 +6,12 @@ Represents a handle to a DOM element in a page.
 mutable struct ElementHandle <: AbstractElementHandle
     page::AbstractPage
     element_id::Int
-    options::Dict{String, Any}
+    options::AbstractDict{String,<:Any}
+    verbose::Bool
 
-    function ElementHandle(page::AbstractPage, element_id::Int, options::Dict{String, Any}=Dict{String, Any}())
-        handle = new(page, element_id, options)
+    function ElementHandle(page::AbstractPage, element_id::Int, options::AbstractDict{String,<:Any}=Dict{String,Any}(); verbose::Bool=false)
+        handle = new(page, element_id, options, verbose)
+        handle.verbose && @info "Creating ElementHandle" element_id=element_id
         # Set a unique identifier for the element
         js_code = """(() => {
             const elements = document.querySelectorAll('*');
@@ -21,6 +23,7 @@ mutable struct ElementHandle <: AbstractElementHandle
             return false;
         })()"""
         evaluate(page, js_code)
+        handle.verbose && @info "ElementHandle created successfully" element_id=element_id
         return handle
     end
 end
@@ -49,8 +52,9 @@ end
 
 Clicks the element.
 """
-function click(element::ElementHandle; options=Dict())
-    params = Dict(
+function click(element::ElementHandle; options::AbstractDict{String,<:Any}=Dict{String,Any}())
+    element.verbose && @info "Clicking element" element_id=element.element_id
+    params = Dict{String,<:Any}(
         "nodeId" => element.element_id,
         "clickCount" => get(options, "clickCount", 1)
     )
@@ -61,6 +65,7 @@ function click(element::ElementHandle; options=Dict())
     if !isnothing(response.error)
         error("Click failed: $(response.error["message"])")
     end
+    element.verbose && @info "Click completed successfully" element_id=element.element_id
     nothing
 end
 
@@ -69,9 +74,10 @@ end
 
 Types text into the element.
 """
-function type_text(element::ElementHandle, text::String; options=Dict())
+function type_text(element::ElementHandle, text::String; options::AbstractDict{String,<:Any}=Dict{String,Any}())
+    element.verbose && @info "Typing text into element" element_id=element.element_id text=text
     # First focus the element
-    focus_params = Dict("nodeId" => element.element_id)
+    focus_params = Dict{String,<:Any}("nodeId" => element.element_id)
     focus_request = create_cdp_message("DOM.focus", focus_params)
     response_channel = send_message(element.page.context.browser.session, focus_request)
     response = take!(response_channel)
@@ -81,7 +87,7 @@ function type_text(element::ElementHandle, text::String; options=Dict())
     end
 
     # Then send keyboard events
-    type_params = Dict(
+    type_params = Dict{String,<:Any}(
         "text" => text,
         "type" => "keyDown"
     )
@@ -92,6 +98,7 @@ function type_text(element::ElementHandle, text::String; options=Dict())
     if !isnothing(response.error)
         error("Type text failed: $(response.error["message"])")
     end
+    element.verbose && @info "Text typed successfully" element_id=element.element_id
     nothing
 end
 
@@ -100,9 +107,10 @@ end
 
 Checks a checkbox or radio button element.
 """
-function check(element::ElementHandle; options=Dict())
+function check(element::ElementHandle; options::AbstractDict{String,<:Any}=Dict{String,Any}())
+    element.verbose && @info "Checking element" element_id=element.element_id
     # First ensure element is visible and clickable
-    params = Dict("nodeId" => element.element_id)
+    params = Dict{String,<:Any}("nodeId" => element.element_id)
     request = create_cdp_message("DOM.focus", params)
     response_channel = send_message(element.page.context.browser.session, request)
     response = take!(response_channel)
@@ -111,8 +119,10 @@ function check(element::ElementHandle; options=Dict())
         error("Focus failed: $(response.error["message"])")
     end
 
+    element.verbose && @info "Element focused, proceeding to click"
     # Then click to check
     click(element, options)
+    element.verbose && @info "Element checked successfully" element_id=element.element_id
     nothing
 end
 
@@ -121,11 +131,16 @@ end
 
 Unchecks a checkbox element.
 """
-function uncheck(element::ElementHandle; options=Dict())
+function uncheck(element::ElementHandle; options::AbstractDict{String,<:Any}=Dict{String,Any}())
+    element.verbose && @info "Unchecking element" element_id=element.element_id
     # First check if it's already unchecked
     is_checked = evaluate_handle(element, "el => el.checked")
     if is_checked
+        element.verbose && @info "Element is checked, proceeding to uncheck"
         click(element, options)
+        element.verbose && @info "Element unchecked successfully"
+    else
+        element.verbose && @info "Element already unchecked"
     end
     nothing
 end
@@ -135,8 +150,9 @@ end
 
 Selects an option in a select element by its value.
 """
-function select_option(element::ElementHandle, value::String; options=Dict())
-    params = Dict(
+function select_option(element::ElementHandle, value::String; options::AbstractDict{String,<:Any}=Dict{String,Any}())
+    element.verbose && @info "Selecting option in element" element_id=element.element_id value=value
+    params = Dict{String,<:Any}(
         "nodeId" => element.element_id,
         "value" => value
     )
@@ -147,6 +163,7 @@ function select_option(element::ElementHandle, value::String; options=Dict())
     if !isnothing(response.error)
         error("Select option failed: $(response.error["message"])")
     end
+    element.verbose && @info "Option selected successfully" element_id=element.element_id value=value
     nothing
 end
 
@@ -156,12 +173,15 @@ end
 Checks if the element is visible on the page.
 """
 function is_visible(element::ElementHandle)
-    params = Dict("nodeId" => element.element_id)
+    element.verbose && @info "Checking element visibility" element_id=element.element_id
+    params = Dict{String,<:Any}("nodeId" => element.element_id)
     request = create_cdp_message("DOM.getBoxModel", params)
     response_channel = send_message(element.page.context.browser.session, request)
     response = take!(response_channel)
 
-    return isnothing(response.error)
+    result = isnothing(response.error)
+    element.verbose && @info "Visibility check completed" element_id=element.element_id visible=result
+    return result
 end
 
 """
@@ -170,6 +190,7 @@ end
 Gets the text content of the element.
 """
 function get_text(element::ElementHandle)
+    element.verbose && @info "Getting text content" element_id=element.element_id
     # Use JavaScript to get text content directly using index calculation
     js_code = """(() => {
         const elements = document.querySelectorAll('.multiple');
@@ -178,7 +199,9 @@ function get_text(element::ElementHandle)
     })()"""
 
     result = evaluate(element.page, js_code)
-    return result isa String ? result : ""
+    text_result = result isa String ? result : ""
+    element.verbose && @info "Text content retrieved" element_id=element.element_id text=text_result
+    return text_result
 end
 
 """
@@ -187,7 +210,8 @@ end
 Gets the value of the specified attribute.
 """
 function get_attribute(element::ElementHandle, name::String)
-    params = Dict(
+    element.verbose && @info "Getting attribute" element_id=element.element_id attribute=name
+    params = Dict{String,<:Any}(
         "nodeId" => element.element_id,
         "name" => name
     )
@@ -199,7 +223,9 @@ function get_attribute(element::ElementHandle, name::String)
         error("Get attribute failed: $(response.error["message"])")
     end
 
-    return response.result["value"]
+    result = response.result["value"]
+    element.verbose && @info "Attribute retrieved" element_id=element.element_id attribute=name value=result
+    return result
 end
 
 """
@@ -219,6 +245,7 @@ is_checked = evaluate_handle(element, "el => el.checked")
 ```
 """
 function evaluate_handle(element::ElementHandle, expression::String)
+    element.verbose && @info "Evaluating expression on element" element_id=element.element_id
     # Create a JavaScript function that evaluates the expression on the element
     js_code = """
     (() => {
@@ -232,13 +259,13 @@ function evaluate_handle(element::ElementHandle, expression::String)
     """
 
     # Create properly formatted CDP message
-    eval_params = Dict{String,Any}(
+    eval_params = Dict{String,<:Any}(
         "expression" => js_code,
         "returnByValue" => true,
         "awaitPromise" => true
     )
 
-    message = Dict{String,Any}(
+    message = Dict{String,<:Any}(
         "sessionId" => element.page.session_id,
         "method" => "Runtime.evaluate",
         "params" => eval_params,

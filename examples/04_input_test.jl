@@ -6,7 +6,8 @@ context = new_context(browser)
 page = create_page(context)
 
 # Navigate to our test input page
-goto(page, "file:///home/ubuntu/ChromeDevToolsLite/test/test_pages/input.html")
+test_page = joinpath(@__DIR__, "..", "test", "test_pages", "input.html")
+goto(page, "file://" * test_page)
 
 # Test type_text with various inputs
 println("Testing type_text with regular text...")

@@ -4,8 +4,8 @@ using ChromeDevToolsLite
 browser = Browser()
 context = create_browser_context(browser)  # Create context through CDP
 page = create_page(context)
-test_file = "file://$(joinpath(pwd(), "examples", "test_pages", "radio_buttons.html"))"
-goto(page, test_file)
+test_file = joinpath(@__DIR__, "..", "test", "test_pages", "radio_buttons.html")
+goto(page, "file://" * test_file)
 
 # Test initial state
 initial_text = get_text(page, "#selected-value")

@@ -26,13 +26,13 @@ context = new_context(browser)
 page = new_page(context)
 
 # Write test HTML to a temporary file
-test_file = "test_screenshot.html"
+test_file = joinpath(@__DIR__, "..", "test", "test_pages", "screenshot_test.html")
 write(test_file, html_content)
 
 try
     # Test 1: Full page screenshot
     println("Test 1: Taking full page screenshot...")
-    goto(page, "file://$(pwd())/$test_file")
+    goto(page, "file://" * test_file)
     screenshot(page, "full_page.png")
     @assert isfile("full_page.png") "Full page screenshot should exist"
 

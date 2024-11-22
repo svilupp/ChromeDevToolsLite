@@ -6,7 +6,7 @@ context = new_context(browser)
 page = create_page(context)
 
 # Create a temporary directory for screenshots
-screenshot_dir = mkpath(joinpath(pwd(), "test_screenshots"))
+screenshot_dir = mkpath(joinpath(@__DIR__, "..", "test", "test_screenshots"))
 
 try
     # Navigate to our test page with multiple elements

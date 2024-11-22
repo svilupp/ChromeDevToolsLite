@@ -6,7 +6,8 @@ context = new_context(browser)
 page = create_page(context)
 
 # Navigate to our test form
-goto(page, "file:///home/ubuntu/ChromeDevToolsLite/test/test_pages/form.html")
+test_page = joinpath(@__DIR__, "..", "test", "test_pages", "form.html")
+goto(page, "file://" * test_page)
 
 # Test type_text
 println("Testing type_text...")

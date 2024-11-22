@@ -9,28 +9,28 @@ abstract type AbstractCDPMessage end
 
 struct CDPRequest <: AbstractCDPMessage
     id::Int
-    method::String
-    params::AbstractDict{String, Any}
+    method::AbstractString
+    params::AbstractDict{String,<:Any}
 end
 
 struct CDPResponse <: AbstractCDPMessage
     id::Int
-    result::Union{AbstractDict{String, Any}, Nothing}
-    error::Union{AbstractDict{String, Any}, Nothing}
+    result::Union{AbstractDict{String,<:Any},Nothing}
+    error::Union{AbstractDict{String,<:Any},Nothing}
 end
 
 struct CDPEvent <: AbstractCDPMessage
-    method::String
-    params::AbstractDict{String, Any}
+    method::AbstractString
+    params::AbstractDict{String,<:Any}
 end
 
 # Message Creation
 """
-    create_cdp_message(method::String, params::Dict{String, Any}=Dict()) -> CDPRequest
+    create_cdp_message(method::AbstractString, params::AbstractDict{String,<:Any}=Dict()) -> CDPRequest
 
 Create a new CDP request message with an automatically generated ID.
 """
-function create_cdp_message(method::String, params::AbstractDict{String, Any}=Dict{String, Any}())
+function create_cdp_message(method::AbstractString, params::AbstractDict{String,<:Any}=Dict{String,Any}())
     id = Base.Threads.atomic_add!(MESSAGE_ID_COUNTER, 1)
     CDPRequest(id, method, params)
 end
@@ -44,31 +44,31 @@ function JSON3.StructTypes.StructType(::Type{<:AbstractCDPMessage})
 end
 
 function JSON3.StructTypes.lower(msg::CDPRequest)
-    Dict("id" => msg.id, "method" => msg.method, "params" => msg.params)
+    Dict{String,Any}("id" => msg.id, "method" => msg.method, "params" => msg.params)
 end
 
 function JSON3.StructTypes.lower(msg::CDPResponse)
     if !isnothing(msg.error)
-        Dict("id" => msg.id, "error" => msg.error)
+        Dict{String,Any}("id" => msg.id, "error" => msg.error)
     else
-        Dict("id" => msg.id, "result" => msg.result)
+        Dict{String,Any}("id" => msg.id, "result" => msg.result)
     end
 end
 
 function JSON3.StructTypes.lower(msg::CDPEvent)
-    Dict("method" => msg.method, "params" => msg.params)
+    Dict{String,Any}("method" => msg.method, "params" => msg.params)
 end
 
 # Message Parsing
 """
-    parse_cdp_message(data::Dict{String, Any}) -> AbstractCDPMessage
+    parse_cdp_message(data::Dict{String,Any}) -> AbstractCDPMessage
 
 Parse a raw CDP message into the appropriate message type.
 """
-function parse_cdp_message(data::AbstractDict{String, Any})
+function parse_cdp_message(data::AbstractDict{String,<:Any})
     if haskey(data, "id")
         if haskey(data, "method")
-            return CDPRequest(data["id"], data["method"], get(data, "params", Dict{String, Any}()))
+            return CDPRequest(data["id"], data["method"], get(data, "params", Dict{String,Any}()))
         else
             return CDPResponse(
                 data["id"],
@@ -77,7 +77,7 @@ function parse_cdp_message(data::AbstractDict{String, Any})
             )
         end
     else
-        return CDPEvent(data["method"], get(data, "params", Dict{String, Any}()))
+        return CDPEvent(data["method"], get(data, "params", Dict{String,Any}()))
     end
 end
 

@@ -12,19 +12,17 @@ html_content = """
 """
 
 # Write the test HTML to a file
-test_dir = joinpath(dirname(@__FILE__), "test_pages")
-mkpath(test_dir)
-test_file = joinpath(test_dir, "element_evaluate.html")
+test_file = joinpath(@__DIR__, "..", "test", "test_pages", "element_evaluate.html")
+mkpath(dirname(test_file))
 write(test_file, html_content)
 
 try
     # Start browser and navigate to test page
     browser = launch_browser()
     page = new_page(new_context(browser))
-    file_url = "file://$(abspath(test_file))"
+    goto(page, "file://" * test_file)
 
     @info "Navigating to test page..."
-    goto(page, file_url)
     sleep(1)
 
     # Basic element test

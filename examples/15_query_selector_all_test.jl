@@ -6,7 +6,8 @@ context = new_context(browser)
 page = create_page(context)
 
 # Navigate to our test page
-goto(page, "file:///home/ubuntu/ChromeDevToolsLite/test/test_pages/multiple_elements.html")
+test_page = joinpath(@__DIR__, "..", "test", "test_pages", "multiple_elements.html")
+goto(page, "file://" * test_page)
 
 # Test 1: Get all items
 println("Test 1: Selecting all items...")

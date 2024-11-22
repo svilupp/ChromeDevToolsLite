@@ -11,12 +11,13 @@ abstract type AbstractWebSocketConnection end
 Wraps a WebSocket connection with CDP-specific functionality.
 """
 mutable struct WebSocketConnection <: AbstractWebSocketConnection
-    ws::HTTP.WebSockets.WebSocket
+    ws::WebSocket
     is_open::Bool
     task::Union{Task, Nothing}
+    verbose::Bool
 end
 
-WebSocketConnection(ws::HTTP.WebSockets.WebSocket) = WebSocketConnection(ws, true, nothing)
+WebSocketConnection(ws::WebSocket; verbose::Bool=false) = WebSocketConnection(ws, true, nothing, verbose)
 
 """
     Base.isopen(conn::WebSocketConnection) -> Bool
@@ -38,11 +39,12 @@ end
 Send data through the WebSocket connection.
 """
 function Base.write(conn::WebSocketConnection, data::String)
+    conn.verbose && @info "Writing to WebSocket" data_length=length(data)
     try
-        HTTP.WebSockets.send(conn.ws, data)
+        WebSockets.send(conn.ws, data)
     catch e
         conn.is_open = false
-        error("Failed to write to WebSocket: $e")
+        error("Failed to write to WebSocket (connection may be closed): $e")
     end
 end
 
@@ -52,11 +54,14 @@ end
 Read data from the WebSocket connection.
 """
 function Base.read(conn::WebSocketConnection)
+    conn.verbose && @info "Reading from WebSocket"
     try
-        return String(HTTP.WebSockets.receive(conn.ws))
+        data = String(WebSockets.receive(conn.ws))
+        conn.verbose && @info "Received data from WebSocket" data_length=length(data)
+        return data
     catch e
         conn.is_open = false
-        error("Failed to read from WebSocket: $e")
+        error("Failed to read from WebSocket (connection may be closed): $e")
     end
 end
 
@@ -66,11 +71,13 @@ end
 Close the WebSocket connection.
 """
 function Base.close(conn::WebSocketConnection)
+    conn.verbose && @info "Closing WebSocket connection"
     try
         conn.is_open = false
-        HTTP.WebSockets.close(conn.ws)
+        WebSockets.close(conn.ws)
+        conn.verbose && @info "WebSocket connection closed successfully"
     catch e
-        @warn "Error closing WebSocket connection: $e"
+        @warn "Error while closing WebSocket connection" exception=(e, catch_backtrace())
     end
 end
 

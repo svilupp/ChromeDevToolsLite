@@ -2,12 +2,12 @@
 Module for managing browser process and launch configuration.
 """
 
-using Sockets, HTTP, JSON3
+using Sockets, WebSockets, JSON3
 
 struct BrowserProcess
     pid::Int
     endpoint::String
-    options::AbstractDict{String, Any}
+    options::AbstractDict{String, <:Any}
 end
 
 const DEFAULT_ARGS = [
@@ -89,7 +89,7 @@ end
 
 Launch a new browser process with the specified options.
 """
-function launch_browser_process(;headless::Bool=true, port::Union{Int,Nothing}=nothing, debug::Bool=false)
+function launch_browser_process(;headless::Bool=true, port::Union{Int,Nothing}=nothing, debug::Bool=false, verbose::Bool=false)
     chrome_path = find_chrome()
     debug_port = isnothing(port) ? get_available_port() : port
 
@@ -103,7 +103,7 @@ function launch_browser_process(;headless::Bool=true, port::Union{Int,Nothing}=n
 
     # Launch browser process with more detailed logging
     process = try
-        @info "Launching browser process..." chrome_path args
+        verbose && @info "Launching browser process..." chrome_path args
         proc = run(pipeline(`$chrome_path $(args)`; stdout=devnull, stderr=devnull), wait=false)
         sleep(2.0)  # Give the browser process time to initialize
         proc
@@ -114,7 +114,7 @@ function launch_browser_process(;headless::Bool=true, port::Union{Int,Nothing}=n
     # Get process ID with better error handling
     pid = try
         if Base.process_running(process)
-            @info "Browser process started successfully" pid=process.handle
+            verbose && @info "Browser process started successfully" pid=process.handle
             process.handle
         else
             error("Browser process failed to start")
@@ -124,26 +124,26 @@ function launch_browser_process(;headless::Bool=true, port::Union{Int,Nothing}=n
     end
 
     # Wait for the debugging port with better error handling
-    endpoint = "http://localhost:$debug_port"
+    endpoint = "ws://localhost:$debug_port"
     max_attempts = 30
     timeout = 5  # Increased timeout
 
-    @info "Waiting for browser to be ready at $endpoint..."
+    verbose && @info "Waiting for browser to be ready at $endpoint..."
     for attempt in 1:max_attempts
         try
-            @info "Attempt $attempt to connect to browser endpoint"
-            response = HTTP.get("$endpoint/json/version", retry=false, readtimeout=timeout)
-            if response.status == 200
-                version_info = JSON3.read(response.body)
-                @info "Browser endpoint ready" version=version_info
+            verbose && @info "Attempt $attempt to connect to browser endpoint"
+            client = WebSocket(endpoint)
+            if isopen(client)
+                verbose && @info "Browser endpoint ready"
+                close(client)
                 return BrowserProcess(
                     pid,
                     endpoint,
-                    Dict{String,Any}("headless" => headless)
+                    Dict{String,Any}("headless" => headless, "verbose" => verbose)
                 )
             end
         catch e
-            @warn "Connection attempt failed" attempt=attempt exception=e
+            verbose && @warn "Connection attempt failed" attempt=attempt exception=e
             if attempt == max_attempts
                 kill(process)
                 error("Failed to connect after $max_attempts attempts: $e")
