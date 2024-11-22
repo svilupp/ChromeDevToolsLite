@@ -40,7 +40,7 @@ Close the browser and all associated contexts and pages.
 browser = launch_browser(headless=true)
 try
     context = new_context(browser)
-    page = create_page(context)
+    page = new_page(context)
 
     # Navigate to a website
     goto(page, "https://example.com")
