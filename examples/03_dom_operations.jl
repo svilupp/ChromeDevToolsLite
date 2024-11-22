@@ -5,16 +5,16 @@ browser = connect_browser()
 page = new_page(browser)
 
 try
-    # Navigate to a website
-    execute_cdp_method(browser, page, "Page.navigate", Dict("url" => "https://example.com"))
+    # Navigate to a website with known content
+    execute_cdp_method(browser, page, "Page.navigate", Dict("url" => "https://httpbin.org/html"))
 
-    # Wait a bit for the page to load (since we can't use events)
-    sleep(1)
+    # Wait for page load and check content
+    sleep(2)
 
     # Find elements by selector and get their text content
     result = execute_cdp_method(browser, page, "Runtime.evaluate", Dict(
         "expression" => """
-            Array.from(document.querySelectorAll('p')).map(el => el.textContent)
+            Array.from(document.getElementsByTagName('p')).map(el => el.textContent)
         """,
         "returnByValue" => true
     ))
