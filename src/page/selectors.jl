@@ -1,9 +1,9 @@
 """
-    count_elements(page::AbstractPage, selector::String)
+    count_elements(page::AbstractPage, selector::AbstractString)
 
 Count the number of elements matching the given CSS selector.
 """
-function count_elements(page::AbstractPage, selector::String)
+function count_elements(page::AbstractPage, selector::AbstractString)
     result = evaluate(page, """
     (function() {
         return document.querySelectorAll('$(selector)').length;
@@ -14,11 +14,11 @@ function count_elements(page::AbstractPage, selector::String)
 end
 
 """
-    is_visible(page::AbstractPage, selector::String)
+    is_visible(page::AbstractPage, selector::AbstractString)
 
 Check if an element matching the selector is visible.
 """
-function is_visible(page::AbstractPage, selector::String)
+function is_visible(page::AbstractPage, selector::AbstractString)
     result = evaluate(page, """
     (function() {
         const element = document.querySelector('$(selector)');
@@ -35,11 +35,11 @@ function is_visible(page::AbstractPage, selector::String)
 end
 
 """
-    get_text(page::AbstractPage, selector::String)
+    get_text(page::AbstractPage, selector::AbstractString)
 
 Get the text content of the first element matching the selector.
 """
-function get_text(page::AbstractPage, selector::String)
+function get_text(page::AbstractPage, selector::AbstractString)
     result = evaluate(page, """
     (function() {
         const element = document.querySelector('$(selector)');
@@ -51,11 +51,11 @@ function get_text(page::AbstractPage, selector::String)
 end
 
 """
-    query_selector_all(page::AbstractPage, selector::String)
+    query_selector_all(page::AbstractPage, selector::AbstractString)
 
 Get all elements matching the selector.
 """
-function query_selector_all(page::AbstractPage, selector::String)
+function query_selector_all(page::AbstractPage, selector::AbstractString)
     result = evaluate(page, """
     (function() {
         const elements = Array.from(document.querySelectorAll('$(selector)'));

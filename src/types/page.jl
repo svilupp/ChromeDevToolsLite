@@ -14,9 +14,9 @@ Represents a single tab or page in the browser.
 """
 Base.@kwdef mutable struct Page <: AbstractPage
     context::AbstractBrowserContext
-    session_id::String
-    target_id::String
-    options::Dict{String,<:Any} = Dict{String,Any}()
+    session_id::AbstractString
+    target_id::AbstractString
+    options::Dict{String,<:Any} = Dict{String,<:Any}()
     verbose::Bool = false
 end
 
@@ -26,8 +26,8 @@ function Page(context::AbstractBrowserContext)
 end
 
 # Full constructor
-function Page(context::AbstractBrowserContext, session_id::String, target_id::String,
-             options::AbstractDict{String,<:Any}=Dict{String,Any}(); verbose::Bool=false)
+function Page(context::AbstractBrowserContext, session_id::AbstractString, target_id::AbstractString,
+             options::AbstractDict{String,<:Any}=Dict{String,<:Any}(); verbose::Bool=false)
     page = Page(context=context, session_id=session_id, target_id=target_id,
                 options=Dict{String,<:Any}(options), verbose=verbose)
     # Enable required domains with timeout
@@ -64,11 +64,11 @@ function Base.show(io::IO, page::Page)
 end
 
 """
-    goto(page::Page, url::String; options=Dict()) -> Nothing
+    goto(page::Page, url::AbstractString; options=Dict()) -> Nothing
 
 Navigate the page to the specified URL and wait for navigation to complete.
 """
-function goto(page::Page, url::String; options::AbstractDict{String,<:Any}=Dict{String,Any}())
+function goto(page::Page, url::AbstractString; options::AbstractDict{String,<:Any}=Dict{String,<:Any}())
     # Create a channel to track navigation completion
     nav_channel = Channel{Bool}(1)
 
@@ -194,11 +194,11 @@ function wait_for_load(page::Page; timeout::Int=30000)
 end
 
 """
-    evaluate(page::Page, expression::String) -> Any
+    evaluate(page::Page, expression::AbstractString) -> Any
 
 Evaluates JavaScript code in the context of the page.
 """
-function evaluate(page::Page, expression::String)
+function evaluate(page::Page, expression::AbstractString)
     page.verbose && @info "Evaluating JavaScript expression" expression
 
     # Only wrap in async IIFE if not already wrapped
@@ -257,13 +257,13 @@ function evaluate(page::Page, expression::String)
 end
 
 """
-    wait_for_selector(page::Page, selector::String; timeout::Int=30000) -> ElementHandle
+    wait_for_selector(page::Page, selector::AbstractString; timeout::Int=30000) -> ElementHandle
 
 Waits for an element matching the selector to appear in page.
 
 # Arguments
 - `page::Page`: The page to search in
-- `selector::String`: CSS selector to match
+- `selector::AbstractString`: CSS selector to match
 - `timeout::Int=30000`: Maximum time to wait in milliseconds
 
 # Returns
@@ -272,7 +272,7 @@ Waits for an element matching the selector to appear in page.
 # Throws
 - `TimeoutError`: If element is not found within timeout period
 """
-function wait_for_selector(page::Page, selector::String; timeout::Int=30000)
+function wait_for_selector(page::Page, selector::AbstractString; timeout::Int=30000)
     retry_with_timeout(timeout=timeout, interval=100) do
         element = query_selector(page, selector)
         if isnothing(element)
@@ -283,11 +283,11 @@ function wait_for_selector(page::Page, selector::String; timeout::Int=30000)
 end
 
 """
-    query_selector(page::Page, selector::String) -> Union{ElementHandle, Nothing}
+    query_selector(page::Page, selector::AbstractString) -> Union{ElementHandle, Nothing}
 
 Returns the first element matching the selector.
 """
-function query_selector(page::Page, selector::String)
+function query_selector(page::Page, selector::AbstractString)
     page.verbose && @info "Querying selector" selector
 
     # First get the document root
@@ -348,7 +348,7 @@ function query_selector(page::Page, selector::String)
 end
 
 """
-    screenshot(page::Page; options=Dict()) -> String
+    screenshot(page::Page; options=Dict()) -> AbstractString
 
 Takes a screenshot of the page and returns it as a base64-encoded string.
 """
@@ -379,11 +379,11 @@ function screenshot(page::Page; options::AbstractDict{String,<:Any}=Dict{String,
 end
 
 """
-    screenshot(page::Page, path::String; options=Dict()) -> Nothing
+    screenshot(page::Page, path::AbstractString; options=Dict()) -> Nothing
 
 Takes a screenshot of the page and saves it to the specified path.
 """
-function screenshot(page::Page, path::String; options::AbstractDict{String,<:Any}=Dict{String,Any}())
+function screenshot(page::Page, path::AbstractString; options::AbstractDict{String,<:Any}=Dict{String,Any}())
     page.verbose && @info "Taking screenshot and saving to path" path options
     data = screenshot(page; options)
     decoded_data = Base64.base64decode(data)
@@ -392,7 +392,7 @@ function screenshot(page::Page, path::String; options::AbstractDict{String,<:Any
     nothing
 end
 
-function evaluate_script(page::Page, script::String, args::Vector=[])
+function evaluate_script(page::Page, script::AbstractString, args::Vector=[])
     response = send_message(page.session, "Runtime.evaluate", Dict{String,<:Any}(
         "expression" => script,
         "arguments" => args,
@@ -403,7 +403,7 @@ function evaluate_script(page::Page, script::String, args::Vector=[])
 end
 
 """
-    url(page::Page) -> String
+    url(page::Page) -> AbstractString
 
 Gets the current URL of the page.
 """
@@ -412,7 +412,7 @@ function url(page::Page)
 end
 
 """
-    get_title(page::Page) -> String
+    get_title(page::Page) -> AbstractString
 
 Gets the current title of the page.
 """
@@ -421,7 +421,7 @@ function get_title(page::Page)
 end
 
 """
-    content(page::Page) -> String
+    content(page::Page) -> AbstractString
 
 Gets the full HTML content of the page.
 """
@@ -430,11 +430,11 @@ function content(page::Page)
 end
 
 """
-    query_selector_all(page::Page, selector::String) -> Vector{ElementHandle}
+    query_selector_all(page::Page, selector::AbstractString) -> Vector{ElementHandle}
 
 Returns all elements matching the selector.
 """
-function query_selector_all(page::Page, selector::String)
+function query_selector_all(page::Page, selector::AbstractString)
     page.verbose && @info "Querying all elements matching selector" selector
 
     # First get the document root
@@ -487,11 +487,11 @@ function query_selector_all(page::Page, selector::String)
 end
 
 """
-    count_elements(page::Page, selector::String) -> Int
+    count_elements(page::Page, selector::AbstractString) -> Int
 
 Returns the number of elements matching the selector.
 """
-function count_elements(page::Page, selector::String)
+function count_elements(page::Page, selector::AbstractString)
     result = evaluate(page, """(() => {
         const elements = document.querySelectorAll('$(selector)');
         return elements ? elements.length : 0;
@@ -500,11 +500,11 @@ function count_elements(page::Page, selector::String)
 end
 
 """
-    get_text(page::Page, selector::String) -> Union{String, Nothing}
+    get_text(page::Page, selector::AbstractString) -> Union{AbstractString, Nothing}
 
 Gets the text content of the first element matching the selector.
 """
-function get_text(page::Page, selector::String)
+function get_text(page::Page, selector::AbstractString)
     result = evaluate(page, """
     (() => {
         const element = document.querySelector('$(selector)');
@@ -515,11 +515,11 @@ function get_text(page::Page, selector::String)
 end
 
 """
-    is_checked(page::Page, selector::String) -> Bool
+    is_checked(page::Page, selector::AbstractString) -> Bool
 
 Returns true if the checkbox/radio element matching the selector is checked.
 """
-function is_checked(page::Page, selector::String)
+function is_checked(page::Page, selector::AbstractString)
     evaluate(page, """(() => {
         const element = document.querySelector('$(selector)');
         return element ? element.checked : false;
@@ -527,11 +527,11 @@ function is_checked(page::Page, selector::String)
 end
 
 """
-    is_visible(page::Page, selector::String) -> Bool
+    is_visible(page::Page, selector::AbstractString) -> Bool
 
 Returns true if the element matching the selector is visible.
 """
-function is_visible(page::Page, selector::String)
+function is_visible(page::Page, selector::AbstractString)
     evaluate(page, """
     const element = document.querySelector('$(selector)');
     if (!element) return false;
@@ -541,11 +541,11 @@ function is_visible(page::Page, selector::String)
 end
 
 """
-    get_value(page::Page, selector::String) -> Union{String, Nothing}
+    get_value(page::Page, selector::AbstractString) -> Union{AbstractString, Nothing}
 
 Gets the value of the first form element matching the selector.
 """
-function get_value(page::Page, selector::String)
+function get_value(page::Page, selector::AbstractString)
     evaluate(page, """(() => {
         const element = document.querySelector('$(selector)');
         return element ? element.value : null;
@@ -553,11 +553,11 @@ function get_value(page::Page, selector::String)
 end
 
 """
-    click(page::Page, selector::String; options=Dict()) -> Nothing
+    click(page::Page, selector::AbstractString; options=Dict()) -> Nothing
 
 Clicks an element matching the selector.
 """
-function click(page::Page, selector::String; options::AbstractDict{String,<:Any}=Dict{String,Any}())
+function click(page::Page, selector::AbstractString; options::AbstractDict{String,<:Any}=Dict{String,Any}())
     page.verbose && @info "Clicking element" selector
     result = evaluate(page, """
     const element = document.querySelector('$(selector)');
@@ -572,11 +572,11 @@ function click(page::Page, selector::String; options::AbstractDict{String,<:Any}
 end
 
 """
-    type_text(page::Page, selector::String, text::String; options=Dict()) -> Nothing
+    type_text(page::Page, selector::AbstractString, text::AbstractString; options=Dict()) -> Nothing
 
 Types text into an element matching the selector.
 """
-function type_text(page::Page, selector::String, text::String; options::AbstractDict{String,<:Any}=Dict{String,Any}())
+function type_text(page::Page, selector::AbstractString, text::AbstractString; options::AbstractDict{String,<:Any}=Dict{String,Any}())
     page.verbose && @info "Typing text into element" selector text
     element = wait_for_selector(page, selector)
     if isnothing(element)
@@ -608,11 +608,11 @@ function type_text(page::Page, selector::String, text::String; options::Abstract
 end
 
 """
-    press_key(page::Page, key::String; options=Dict()) -> Nothing
+    press_key(page::Page, key::AbstractString; options=Dict()) -> Nothing
 
 Simulates pressing a keyboard key. The key should be a valid key value like "Enter", "Tab", "ArrowLeft", etc.
 """
-function press_key(page::Page, key::String; options::AbstractDict{String,<:Any}=Dict{String,Any}())
+function press_key(page::Page, key::AbstractString; options::AbstractDict{String,<:Any}=Dict{String,Any}())
     page.verbose && @info "Pressing key" key
     params = Dict{String,<:Any}(
         "type" => "keyDown",
@@ -630,11 +630,11 @@ function press_key(page::Page, key::String; options::AbstractDict{String,<:Any}=
 end
 
 """
-    select_option(page::Page, selector::String, value::String; options=Dict()) -> Nothing
+    select_option(page::Page, selector::AbstractString, value::AbstractString; options=Dict()) -> Nothing
 
 Selects an option in a select element matching the selector.
 """
-function select_option(page::Page, selector::String, value::String; options::AbstractDict{String,<:Any}=Dict{String,Any}())
+function select_option(page::Page, selector::AbstractString, value::AbstractString; options::AbstractDict{String,<:Any}=Dict{String,Any}())
     page.verbose && @info "Selecting option in select element" selector value
     result = evaluate(page, """(function() {
         const select = document.querySelector('$(selector)');
@@ -677,12 +677,12 @@ function Base.close(page::Page)
 end
 
 """
-    submit_form(page::Page, selector::String) -> Bool
+    submit_form(page::Page, selector::AbstractString) -> Bool
 
 Submits a form element matching the selector.
 Returns true if successful, false otherwise.
 """
-function submit_form(page::Page, selector::String)
+function submit_form(page::Page, selector::AbstractString)
     page.verbose && @info "Submitting form" selector
     evaluate(page, """(() => {
         const form = document.querySelector('$(selector)');

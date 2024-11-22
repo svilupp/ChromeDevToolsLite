@@ -6,10 +6,10 @@ Represents a handle to a DOM element in a page.
 mutable struct ElementHandle <: AbstractElementHandle
     page::AbstractPage
     element_id::Int
-    options::AbstractDict{String,<:Any}
+    options::Dict{String,<:Any}
     verbose::Bool
 
-    function ElementHandle(page::AbstractPage, element_id::Int, options::AbstractDict{String,<:Any}=Dict{String,Any}(); verbose::Bool=false)
+    function ElementHandle(page::AbstractPage, element_id::Int, options::AbstractDict{String,<:Any}=Dict{String,<:Any}(); verbose::Bool=false)
         handle = new(page, element_id, options, verbose)
         handle.verbose && @info "Creating ElementHandle" element_id=element_id
         # Set a unique identifier for the element
@@ -52,7 +52,7 @@ end
 
 Clicks the element.
 """
-function click(element::ElementHandle; options::AbstractDict{String,<:Any}=Dict{String,Any}())
+function click(element::ElementHandle; options::AbstractDict{String,<:Any}=Dict{String,<:Any}())
     element.verbose && @info "Clicking element" element_id=element.element_id
     params = Dict{String,<:Any}(
         "nodeId" => element.element_id,
@@ -70,11 +70,11 @@ function click(element::ElementHandle; options::AbstractDict{String,<:Any}=Dict{
 end
 
 """
-    type_text(element::ElementHandle, text::String; options=Dict()) -> Nothing
+    type_text(element::ElementHandle, text::AbstractString; options=Dict()) -> Nothing
 
 Types text into the element.
 """
-function type_text(element::ElementHandle, text::String; options::AbstractDict{String,<:Any}=Dict{String,Any}())
+function type_text(element::ElementHandle, text::AbstractString; options::AbstractDict{String,<:Any}=Dict{String,<:Any}())
     element.verbose && @info "Typing text into element" element_id=element.element_id text=text
     # First focus the element
     focus_params = Dict{String,<:Any}("nodeId" => element.element_id)
@@ -107,7 +107,7 @@ end
 
 Checks a checkbox or radio button element.
 """
-function check(element::ElementHandle; options::AbstractDict{String,<:Any}=Dict{String,Any}())
+function check(element::ElementHandle; options::AbstractDict{String,<:Any}=Dict{String,<:Any}())
     element.verbose && @info "Checking element" element_id=element.element_id
     # First ensure element is visible and clickable
     params = Dict{String,<:Any}("nodeId" => element.element_id)
@@ -131,7 +131,7 @@ end
 
 Unchecks a checkbox element.
 """
-function uncheck(element::ElementHandle; options::AbstractDict{String,<:Any}=Dict{String,Any}())
+function uncheck(element::ElementHandle; options::AbstractDict{String,<:Any}=Dict{String,<:Any}())
     element.verbose && @info "Unchecking element" element_id=element.element_id
     # First check if it's already unchecked
     is_checked = evaluate_handle(element, "el => el.checked")
@@ -146,11 +146,11 @@ function uncheck(element::ElementHandle; options::AbstractDict{String,<:Any}=Dic
 end
 
 """
-    select_option(element::ElementHandle, value::String; options=Dict()) -> Nothing
+    select_option(element::ElementHandle, value::AbstractString; options=Dict()) -> Nothing
 
 Selects an option in a select element by its value.
 """
-function select_option(element::ElementHandle, value::String; options::AbstractDict{String,<:Any}=Dict{String,Any}())
+function select_option(element::ElementHandle, value::AbstractString; options::AbstractDict{String,<:Any}=Dict{String,<:Any}())
     element.verbose && @info "Selecting option in element" element_id=element.element_id value=value
     params = Dict{String,<:Any}(
         "nodeId" => element.element_id,
@@ -185,7 +185,7 @@ function is_visible(element::ElementHandle)
 end
 
 """
-    get_text(element::ElementHandle) -> String
+    get_text(element::ElementHandle) -> AbstractString
 
 Gets the text content of the element.
 """
@@ -205,11 +205,11 @@ function get_text(element::ElementHandle)
 end
 
 """
-    get_attribute(element::ElementHandle, name::String) -> Union{String, Nothing}
+    get_attribute(element::ElementHandle, name::AbstractString) -> Union{AbstractString, Nothing}
 
 Gets the value of the specified attribute.
 """
-function get_attribute(element::ElementHandle, name::String)
+function get_attribute(element::ElementHandle, name::AbstractString)
     element.verbose && @info "Getting attribute" element_id=element.element_id attribute=name
     params = Dict{String,<:Any}(
         "nodeId" => element.element_id,
@@ -229,14 +229,14 @@ function get_attribute(element::ElementHandle, name::String)
 end
 
 """
-    evaluate_handle(element::ElementHandle, expression::String) -> Any
+    evaluate_handle(element::ElementHandle, expression::AbstractString) -> Any
 
 Evaluates JavaScript expression in the context of the element.
 The expression will receive the element as its first argument.
 
 # Arguments
 - `element::ElementHandle`: The element to evaluate against
-- `expression::String`: JavaScript expression to evaluate
+- `expression::AbstractString`: JavaScript expression to evaluate
 
 # Example
 ```julia
@@ -244,7 +244,7 @@ The expression will receive the element as its first argument.
 is_checked = evaluate_handle(element, "el => el.checked")
 ```
 """
-function evaluate_handle(element::ElementHandle, expression::String)
+function evaluate_handle(element::ElementHandle, expression::AbstractString)
     element.verbose && @info "Evaluating expression on element" element_id=element.element_id
     # Create a JavaScript function that evaluates the expression on the element
     js_code = """

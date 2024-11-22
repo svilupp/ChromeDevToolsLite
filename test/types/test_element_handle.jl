@@ -5,15 +5,15 @@ using TestUtils
 @testset "ElementHandle Base methods" begin
     # Setup mock browser, context, and page
     mock_ws = MockWebSocket()
-    browser = Browser(mock_ws, BrowserContext[], Dict{String,Any}())
-    context = BrowserContext(browser, Page[], Dict{String,Any}(), "test-context-1")
-    page = Page(context, "page-1", "target-1", Dict{String,Any}())
+    browser = Browser(mock_ws, BrowserContext[], Dict{String,<:Any}())
+    context = BrowserContext(browser, Page[], Dict{String,<:Any}(), "test-context-1")
+    page = Page(context, "page-1", "target-1", Dict{String,<:Any}())
 
     # Create test element handle
     element = ElementHandle(
         page,
         "element-1",
-        Dict{String,Any}()
+        Dict{String,<:Any}()
     )
 
     # Test show method
@@ -31,7 +31,7 @@ using TestUtils
         @test last_msg["params"]["clickCount"] == 1
 
         # Test click with options
-        click(element, Dict("clickCount" => 2))
+        click(element, Dict{String,<:Any}("clickCount" => 2))
         last_msg = get_last_message(mock_ws)
         @test last_msg["params"]["clickCount"] == 2
 

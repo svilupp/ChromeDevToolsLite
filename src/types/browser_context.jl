@@ -6,8 +6,8 @@ Represents an isolated browser context that contains a set of pages.
 mutable struct BrowserContext <: AbstractBrowserContext
     browser::AbstractBrowser
     pages::Vector{AbstractPage}
-    options::Dict{String,<:Any}
-    context_id::String
+    options::Dict{AbstractString,<:Any}
+    context_id::AbstractString
     verbose::Bool
 
     # Default constructor

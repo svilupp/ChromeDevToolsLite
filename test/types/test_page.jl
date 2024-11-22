@@ -5,15 +5,15 @@ using TestUtils
 @testset "Page Base methods" begin
     # Setup mock browser and context
     mock_ws = MockWebSocket()
-    browser = Browser(mock_ws, BrowserContext[], Dict{String,Any}())
-    context = BrowserContext(browser, Page[], Dict{String,Any}(), "test-context-1")
+    browser = Browser(mock_ws, BrowserContext[], Dict{String,<:Any}())
+    context = BrowserContext(browser, Page[], Dict{String,<:Any}(), "test-context-1")
 
     # Create test page
     page = Page(
         context,
         "page-1",
         "target-1",
-        Dict{String,Any}()
+        Dict{String,<:Any}()
     )
 
     # Test show method
@@ -98,7 +98,7 @@ using TestUtils
         @test last_msg["params"]["clickCount"] == 1
 
         # Test click with options
-        click(page, "#double-click", Dict("clickCount" => 2))
+        click(page, "#double-click", Dict{String,<:Any}("clickCount" => 2))
         last_msg = get_last_message(mock_ws)
         @test last_msg["params"]["clickCount"] == 2
 
@@ -127,7 +127,7 @@ using TestUtils
         @test last_msg["params"]["fromSurface"] == true
 
         # Test screenshot with options
-        screenshot_data = screenshot(page, Dict("format" => "jpeg", "quality" => 80))
+        screenshot_data = screenshot(page, Dict{String,<:Any}("format" => "jpeg", "quality" => 80))
         last_msg = get_last_message(mock_ws)
         @test last_msg["params"]["format"] == "jpeg"
         @test last_msg["params"]["quality"] == 80

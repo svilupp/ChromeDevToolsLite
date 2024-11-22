@@ -4,7 +4,7 @@
 Custom error type for timeout-related errors.
 """
 struct TimeoutError <: Exception
-    msg::String
+    msg::AbstractString
 end
 
 """

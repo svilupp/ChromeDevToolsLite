@@ -7,7 +7,7 @@ mutable struct Browser <: AbstractBrowser
     process::BrowserProcess
     session::CDPSession
     contexts::Vector{AbstractBrowserContext}
-    options::Dict{String,<:Any}
+    options::Dict{AbstractString,<:Any}
     verbose::Bool
 end
 

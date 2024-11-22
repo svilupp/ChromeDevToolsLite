@@ -46,7 +46,7 @@ end
 Send a CDP request and return a channel that will receive the response.
 Throws ConnectionError if the session is closed.
 """
-function send_message(session::CDPSession, msg::Union{CDPRequest,AbstractDict{String,<:Any}}; timeout::Int=5000)
+function send_message(session::CDPSession, msg::Union{CDPRequest,AbstractDict{AbstractString,<:Any}}; timeout::Int=5000)
     if session.is_closed[]
         throw(ConnectionError("Cannot send message: CDP session is closed"))
     end
@@ -84,11 +84,11 @@ function send_message(session::CDPSession, msg::Union{CDPRequest,AbstractDict{St
 end
 
 """
-    add_event_listener(session::CDPSession, method::String, callback::Function)
+    add_event_listener(session::CDPSession, method::AbstractString, callback::Function)
 
 Add a callback function for a specific CDP event method.
 """
-function add_event_listener(session::CDPSession, method::String, callback::Function)
+function add_event_listener(session::CDPSession, method::AbstractString, callback::Function)
     session.verbose && @info "Adding event listener" method=method
     lock(session.lock) do
         if !haskey(session.event_listeners, method)
@@ -102,11 +102,11 @@ function add_event_listener(session::CDPSession, method::String, callback::Funct
 end
 
 """
-    remove_event_listener(session::CDPSession, method::String, callback::Function)
+    remove_event_listener(session::CDPSession, method::AbstractString, callback::Function)
 
 Remove a callback function for a specific CDP event method.
 """
-function remove_event_listener(session::CDPSession, method::String, callback::Function)
+function remove_event_listener(session::CDPSession, method::AbstractString, callback::Function)
     lock(session.lock) do
         if haskey(session.event_listeners, method)
             filter!(f -> f !== callback, session.event_listeners[method])

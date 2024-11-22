@@ -15,7 +15,7 @@ abstract type ChromeDevToolsError <: Exception end
 Error raised when there are issues with the CDP connection.
 """
 struct ConnectionError <: ChromeDevToolsError
-    msg::String
+    msg::AbstractString
 end
 
 """
@@ -24,7 +24,7 @@ end
 Error raised when page navigation fails.
 """
 struct NavigationError <: ChromeDevToolsError
-    msg::String
+    msg::AbstractString
 end
 
 """
@@ -33,7 +33,7 @@ end
 Error raised when an element cannot be found on the page.
 """
 struct ElementNotFoundError <: ChromeDevToolsError
-    msg::String
+    msg::AbstractString
 end
 
 """
@@ -42,7 +42,7 @@ end
 Error raised when JavaScript evaluation fails.
 """
 struct EvaluationError <: ChromeDevToolsError
-    msg::String
+    msg::AbstractString
 end
 
 """
@@ -51,9 +51,9 @@ end
 Error raised when an operation times out.
 """
 struct TimeoutError <: ChromeDevToolsError
-    msg::String
+    msg::AbstractString
     cause::Union{Nothing, Exception}
-    TimeoutError(msg::String, cause::Union{Nothing, Exception}=nothing) = new(msg, cause)
+    TimeoutError(msg::AbstractString, cause::Union{Nothing, Exception}=nothing) = new(msg, cause)
 end
 
 """
@@ -61,7 +61,7 @@ end
 
 Handle CDP response errors by throwing appropriate error types.
 """
-function handle_cdp_error(response::Dict)
+function handle_cdp_error(response::AbstractDict{String,<:Any})
     if haskey(response, "error")
         error_data = response["error"]
         code = get(error_data, "code", -1)

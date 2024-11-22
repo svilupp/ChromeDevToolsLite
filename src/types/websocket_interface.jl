@@ -34,11 +34,11 @@ function Base.isopen(conn::WebSocketConnection)
 end
 
 """
-    Base.write(conn::WebSocketConnection, data::String)
+    Base.write(conn::WebSocketConnection, data::AbstractString)
 
 Send data through the WebSocket connection.
 """
-function Base.write(conn::WebSocketConnection, data::String)
+function Base.write(conn::WebSocketConnection, data::AbstractString)
     conn.verbose && @info "Writing to WebSocket" data_length=length(data)
     try
         WebSockets.send(conn.ws, data)
@@ -49,7 +49,7 @@ function Base.write(conn::WebSocketConnection, data::String)
 end
 
 """
-    Base.read(conn::WebSocketConnection) -> String
+    Base.read(conn::WebSocketConnection) -> AbstractString
 
 Read data from the WebSocket connection.
 """

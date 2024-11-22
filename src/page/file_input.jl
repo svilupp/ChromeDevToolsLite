@@ -1,9 +1,9 @@
 """
-    set_file_input_files(page::Page, selector::String, files::Vector{String})
+    set_file_input_files(page::Page, selector::AbstractString, files::Vector{AbstractString})
 
 Sets the files to be uploaded in a file input element.
 """
-function set_file_input_files(page::Page, selector::String, files::Vector{String})
+function set_file_input_files(page::Page, selector::AbstractString, files::Vector{AbstractString})
     # Ensure all files exist and are absolute paths
     abs_files = map(files) do file
         if !isfile(file)
@@ -69,5 +69,5 @@ function set_file_input_files(page::Page, selector::String, files::Vector{String
 end
 
 # Convenience method for single file
-set_file_input_files(page::Page, selector::String, file::String) =
+set_file_input_files(page::Page, selector::AbstractString, file::AbstractString) =
     set_file_input_files(page, selector, [file])
