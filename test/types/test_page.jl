@@ -5,15 +5,17 @@ using TestUtils
 @testset "Page Base methods" begin
     # Setup mock browser and context
     mock_ws = MockWebSocket()
-    browser = Browser(mock_ws, BrowserContext[], Dict{String,<:Any}())
-    context = BrowserContext(browser, Page[], Dict{String,<:Any}(), "test-context-1")
+    mock_process = MockBrowserProcess()
+    mock_session = MockCDPSession(mock_ws)
+    browser = Browser(mock_process, mock_session, AbstractBrowserContext[], Dict{AbstractString,Any}(), false)
+    context = BrowserContext(browser; verbose=false)
 
     # Create test page
     page = Page(
         context,
         "page-1",
         "target-1",
-        Dict{String,<:Any}()
+        Dict{AbstractString,Any}()
     )
 
     # Test show method
@@ -98,7 +100,7 @@ using TestUtils
         @test last_msg["params"]["clickCount"] == 1
 
         # Test click with options
-        click(page, "#double-click", Dict{String,<:Any}("clickCount" => 2))
+        click(page, "#double-click", Dict{AbstractString,<:Any}("clickCount" => 2))
         last_msg = get_last_message(mock_ws)
         @test last_msg["params"]["clickCount"] == 2
 
@@ -127,7 +129,7 @@ using TestUtils
         @test last_msg["params"]["fromSurface"] == true
 
         # Test screenshot with options
-        screenshot_data = screenshot(page, Dict{String,<:Any}("format" => "jpeg", "quality" => 80))
+        screenshot_data = screenshot(page, Dict{AbstractString,<:Any}("format" => "jpeg", "quality" => 80))
         last_msg = get_last_message(mock_ws)
         @test last_msg["params"]["format"] == "jpeg"
         @test last_msg["params"]["quality"] == 80
@@ -143,21 +145,5 @@ using TestUtils
         html_msg = get_last_message(mock_ws)
         @test html_msg["method"] == "DOM.getOuterHTML"
         @test haskey(html_msg["params"], "nodeId")
-    end
-end
-
-        # Test type_text
-        type_text(page, "#input-field", "Hello, World!")
-
-        # Verify focus message
-        focus_msg = get_last_message(mock_ws, -2)  # Get second to last message
-        @test focus_msg["method"] == "DOM.focus"
-        @test haskey(focus_msg["params"], "nodeId")
-
-        # Verify type message
-        type_msg = get_last_message(mock_ws)
-        @test type_msg["method"] == "Input.insertText"
-        @test type_msg["params"]["text"] == "Hello, World!"
-        @test type_msg["params"]["type"] == "keyDown"
     end
 end

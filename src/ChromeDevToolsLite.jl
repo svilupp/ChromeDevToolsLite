@@ -10,10 +10,13 @@ abstract type AbstractBrowser end
 abstract type AbstractBrowserContext end
 abstract type AbstractPage end
 abstract type AbstractElementHandle end
+abstract type AbstractBrowserProcess end
 abstract type AbstractWebSocketConnection end
+abstract type AbstractCDPSession end
 
 # Export abstract types
-export AbstractBrowser, AbstractBrowserContext, AbstractPage, AbstractElementHandle, AbstractWebSocketConnection
+export AbstractBrowser, AbstractBrowserContext, AbstractPage, AbstractElementHandle,
+       AbstractBrowserProcess, AbstractWebSocketConnection, AbstractCDPSession
 
 # Types
 export Browser, BrowserContext, Page, ElementHandle,
@@ -31,6 +34,7 @@ export AbstractCDPMessage, CDPRequest, CDPResponse, CDPEvent,
 export BrowserProcess, launch_browser_process, kill_browser_process
 
 # Include type definitions and utilities
+include("interfaces.jl")  # Add this line first
 include("utils/errors.jl")  # Include errors first as it contains TimeoutError
 include("utils/retry.jl")
 include("types/websocket_interface.jl")

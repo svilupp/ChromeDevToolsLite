@@ -63,15 +63,6 @@ context = new_context(browser)
 println(context)  # outputs: BrowserContext()
 ```
 """
-
-Display information about the browser context.
-
-# Examples
-```julia
-context = new_context(browser)
-println(context)  # outputs: BrowserContext()
-```
-"""
 function Base.show(io::IO, context::AbstractBrowserContext)
     print(io, "BrowserContext()")
 end
@@ -104,85 +95,6 @@ Display information about the page.
 ```julia
 page = new_page(context)
 println(page)  # outputs: Page(url=about:blank)
-```
-"""
-function Base.show(io::IO, page::AbstractPage)
-    print(io, "Page(url=$(page.url))")
-end
-
-"""
-    close(element::AbstractElementHandle)
-
-Clean up resources associated with the element handle.
-
-# Examples
-```julia
-element = query_selector(page, "#my-element")
-try
-    # Use element
-finally
-    close(element)
-end
-```
-"""
-function Base.close(element::AbstractElementHandle)
-    # Implementation in element_handle.jl
-end
-
-"""
-    show(io::IO, element::AbstractElementHandle)
-
-Display information about the element handle.
-
-# Examples
-```julia
-element = query_selector(page, "#my-element")
-println(element)  # outputs: ElementHandle()
-```
-"""
-function Base.show(io::IO, element::AbstractElementHandle)
-    print(io, "ElementHandle()")
-end
-
-# Examples
-```julia
-context = new_context(browser)
-println(context)  # outputs: BrowserContext()
-```
-"""
-function Base.show(io::IO, context::AbstractBrowserContext)
-    print(io, "BrowserContext()")
-end
-
-"""
-    close(page::AbstractPage)
-
-Close the page and clean up associated resources.
-
-# Examples
-```julia
-page = new_page(context)
-try
-    # Use page
-finally
-    close(page)
-end
-```
-"""
-function Base.close(page::AbstractPage)
-    # Implementation in page.jl
-end
-
-"""
-    show(io::IO, page::AbstractPage)
-
-Display information about the page, including its current URL.
-
-# Examples
-```julia
-page = new_page(context)
-goto(page, "https://example.com")
-println(page)  # outputs: Page(url=https://example.com)
 ```
 """
 function Base.show(io::IO, page::AbstractPage)

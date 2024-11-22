@@ -2,7 +2,10 @@
 Module for managing browser process and launch configuration.
 """
 
-using Sockets, WebSockets, JSON3
+using Sockets
+using WebSockets
+using JSON3
+using HTTP
 
 """
     BrowserProcess
@@ -11,8 +14,8 @@ Represents a running browser process with its debugging endpoint and configurati
 """
 struct BrowserProcess
     pid::Int
-    endpoint::AbstractString
-    options::AbstractDict{AbstractString,<:Any}
+    endpoint::String
+    options::Dict{String,Any}
 end
 
 """
@@ -51,7 +54,10 @@ const DEFAULT_ARGS = [
     "--enable-automation",  # Added for CDP support
     "--enable-blink-features=IdleDetection",  # Added for CDP support
     "--no-sandbox",  # Added to fix permission issues
-    "--remote-debugging-port=0",  # Will be replaced with actual port
+    "--disable-gpu",  # Disable GPU hardware acceleration
+    "--disable-software-rasterizer",  # Disable software rasterizer
+    "--disable-setuid-sandbox",  # Disable setuid sandbox (also helps with permissions)
+    "--remote-debugging-port=0"  # Will be replaced with actual port
 ]
 
 """
@@ -60,29 +66,34 @@ const DEFAULT_ARGS = [
 Find the Chrome/Chromium executable path.
 """
 function find_chrome()
-    # Common paths for Chrome/Chromium
+    # Prefer system chromium over snap version
     chrome_executables = [
+        "/usr/bin/chromium-browser",  # System chromium
+        "/usr/bin/google-chrome",
+        "/usr/bin/google-chrome-stable",
         "chromium",
         "chromium-browser",
         "google-chrome",
-        "google-chrome-stable",
-        "google-chrome-unstable",
-        "google-chrome-beta"
+        "google-chrome-stable"
     ]
 
-    # Try to find Chrome in PATH
+    # Try to find Chrome in specific paths first, then PATH
     for exec in chrome_executables
-        path = try
-            chomp(read(`which $exec`, String))
-        catch
-            continue
+        path = if startswith(exec, "/")
+            isfile(exec) ? exec : nothing
+        else
+            try
+                chomp(read(`which $exec`, String))
+            catch
+                nothing
+            end
         end
-        if !isempty(path)
+        if !isnothing(path) && !isempty(path) && !contains(path, "snap")
             return path
         end
     end
 
-    error("Could not find Chrome/Chromium installation. Please install Chrome or Chromium.")
+    error("Could not find suitable Chrome/Chromium installation. Please install Chrome or Chromium.")
 end
 
 """
@@ -118,8 +129,17 @@ function launch_browser_process(;headless::Bool=true, port::Union{Int,Nothing}=n
     # Launch browser process with more detailed logging
     process = try
         verbose && @info "Launching browser process..." chrome_path args
-        proc = run(pipeline(`$chrome_path $(args)`; stdout=devnull, stderr=devnull), wait=false)
-        sleep(2.0)  # Give the browser process time to initialize
+        # Create temp files for stdout and stderr
+        stdout_file = tempname()
+        stderr_file = tempname()
+        proc = run(pipeline(`$chrome_path $(args)`; stdout=stdout_file, stderr=stderr_file), wait=false)
+        sleep(5.0)  # Increased sleep time to give browser more time to initialize
+        if !process_running(proc)
+            # Read and log the error output if process failed to start
+            stderr_content = read(stderr_file, String)
+            @error "Browser process failed to start" stderr=stderr_content
+            error("Browser process failed to start: $stderr_content")
+        end
         proc
     catch e
         error("Failed to launch browser process: $e")
@@ -138,7 +158,7 @@ function launch_browser_process(;headless::Bool=true, port::Union{Int,Nothing}=n
     end
 
     # Wait for the debugging port with better error handling
-    endpoint = "ws://localhost:$debug_port"
+    endpoint = "http://localhost:$debug_port"
     max_attempts = 30
     timeout = 5  # Increased timeout
 
@@ -146,10 +166,10 @@ function launch_browser_process(;headless::Bool=true, port::Union{Int,Nothing}=n
     for attempt in 1:max_attempts
         try
             verbose && @info "Attempt $attempt to connect to browser endpoint"
-            client = WebSocket(endpoint)
-            if isopen(client)
+            # Try to connect to the browser's HTTP endpoint
+            response = HTTP.get("$endpoint/json/version")
+            if response.status == 200
                 verbose && @info "Browser endpoint ready"
-                close(client)
                 return BrowserProcess(
                     pid,
                     endpoint,

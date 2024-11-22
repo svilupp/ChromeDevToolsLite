@@ -35,5 +35,22 @@ Base type for DOM element handles. Supports the following Base operations:
 """
 abstract type AbstractElementHandle end
 
+"""
+    AbstractBrowserProcess
+
+Base type for browser processes. Supports the following operations:
+- `kill_browser_process(process)`: Terminates the browser process
+"""
+abstract type AbstractBrowserProcess end
+
+"""
+    AbstractCDPSession
+
+Base type for CDP sessions. Supports the following operations:
+- `Base.close(session)`: Closes the session and cleans up resources
+- `send_message(session, message)`: Sends a CDP message through the session
+"""
+abstract type AbstractCDPSession end
+
 # Export abstract types
-export AbstractBrowser, AbstractBrowserContext, AbstractPage, AbstractElementHandle
+export AbstractBrowser, AbstractBrowserContext, AbstractPage, AbstractElementHandle, AbstractBrowserProcess, AbstractCDPSession

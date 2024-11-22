@@ -3,39 +3,43 @@ Module for managing CDP sessions and message routing.
 """
 
 using Base.Threads
-using ..ChromeDevToolsLite: TimeoutError, retry_with_timeout
+using WebSockets
+using JSON3
+using ..ChromeDevToolsLite: TimeoutError, retry_with_timeout, ConnectionError
 
 """
     CDPSession
 
 Represents a Chrome DevTools Protocol session managing WebSocket communication and message routing.
 """
-mutable struct CDPSession
-    ws::AbstractWebSocketConnection
+mutable struct CDPSession{T}
+    ws::T
     callbacks::AbstractDict{Int,Channel{CDPResponse}}
-    event_listeners::AbstractDict{AbstractString,Vector{Function}}
+    event_listeners::Dict{String,Vector{Function}}  # Keep concrete type for initialization
     lock::ReentrantLock
     is_closed::Ref{Bool}
     verbose::Bool
+    message_task::Union{Task,Nothing}  # Add message processing task reference
 end
 
 """
-    CDPSession(ws::AbstractWebSocketConnection; verbose::Bool=false)
+    CDPSession(ws::T; verbose::Bool=false) where T
 
 Create a new CDP session with the given WebSocket connection.
 """
-function CDPSession(ws::AbstractWebSocketConnection; verbose::Bool=false)
-    session = CDPSession(
+function CDPSession(ws::T; verbose::Bool=false) where T
+    session = CDPSession{T}(
         ws,
         Dict{Int,Channel{CDPResponse}}(),
         Dict{String,Vector{Function}}(),
         ReentrantLock(),
         Ref(false),
-        verbose
+        verbose,
+        nothing  # Initialize message_task as nothing
     )
 
     # Start message processing task
-    @async process_messages(session)
+    session.message_task = @async process_messages(session)
 
     return session
 end
@@ -50,10 +54,12 @@ function send_message(session::CDPSession, msg::Union{CDPRequest,AbstractDict{Ab
     if session.is_closed[]
         throw(ConnectionError("Cannot send message: CDP session is closed"))
     end
+    !isopen(session.ws) && throw(ConnectionError("WebSocket connection is closed"))
 
     response_channel = Channel{CDPResponse}(1)
     msg_id = msg isa CDPRequest ? msg.id : msg["id"]
 
+    # Register callback
     lock(session.lock) do
         session.callbacks[msg_id] = response_channel
     end
@@ -63,22 +69,25 @@ function send_message(session::CDPSession, msg::Union{CDPRequest,AbstractDict{Ab
         session.verbose && @info "Sending CDP message" message=json_msg
         write(session.ws, json_msg)
 
-        # Create timeout task
+        # Setup timeout for response
         timeout_task = @async begin
             sleep(timeout / 1000)
-            if !isopen(response_channel)
-                return
+            if isopen(response_channel)
+                lock(session.lock) do
+                    if haskey(session.callbacks, msg_id)
+                        delete!(session.callbacks, msg_id)
+                        close(response_channel)
+                    end
+                end
             end
-            lock(session.lock) do
-                delete!(session.callbacks, msg_id)
-            end
-            close(response_channel)
         end
 
         return response_channel
     catch e
-        delete!(session.callbacks, msg_id)
-        close(response_channel)
+        lock(session.lock) do
+            delete!(session.callbacks, msg_id)
+        end
+        isopen(response_channel) && close(response_channel)
         throw(ConnectionError("Failed to send CDP message: $e"))
     end
 end
@@ -129,65 +138,110 @@ function process_messages(session::CDPSession)
             end
 
             data = try
-                message = read(session.ws)
-                session.verbose && @info "Received CDP message" message=message
-                JSON3.read(message, Dict{String,<:Any})  # Allow flexible value types from JSON
-            catch e
-                if session.is_closed[]
-                    break
-                end
-                throw(ConnectionError("Failed to read CDP message: $e"))
-            end
-
-            msg = parse_cdp_message(data)
-            session.verbose && @info "Parsed CDP message" type=typeof(msg) msg=msg
-
-            if msg isa CDPResponse
-                session.verbose && @info "Processing response" id=msg.id callbacks=keys(session.callbacks)
-                lock(session.lock) do
-                    if haskey(session.callbacks, msg.id)
-                        session.verbose && @info "Found callback for message" id=msg.id
-                        try
-                            put!(session.callbacks[msg.id], msg)
-                            delete!(session.callbacks, msg.id)
-                            session.verbose && @info "Successfully delivered response" id=msg.id
-                        catch e
-                            session.verbose && @error "Failed to deliver response" msg_id=msg.id exception=e
+                read_channel = Channel{Any}(1)
+                read_task = @async begin
+                    try
+                        message = read(session.ws)
+                        if !session.is_closed[] && isopen(read_channel)
+                            put!(read_channel, message)
                         end
-                    else
-                        session.verbose && @warn "No callback found for message" id=msg.id
+                    catch e
+                        if !session.is_closed[] && isopen(read_channel)
+                            put!(read_channel, e)
+                        end
+                    finally
+                        isopen(read_channel) && close(read_channel)
                     end
                 end
-            elseif msg isa CDPEvent
-                session.verbose && @info "Processing CDP event" method=msg.method
+
+                timeout_task = @async begin
+                    sleep(5.0)  # 5 second timeout
+                    if !istaskdone(read_task) && isopen(read_channel)
+                        put!(read_channel, TimeoutError("WebSocket read operation timed out"))
+                        close(read_channel)
+                    end
+                end
+
+                message = try
+                    take!(read_channel)
+                finally
+                    isopen(read_channel) && close(read_channel)
+                end
+
+                if message isa Exception
+                    throw(message)
+                end
+
+                if isempty(message)
+                    session.verbose && @info "Received empty message, skipping"
+                    continue
+                end
+                session.verbose && @info "Received CDP message" message=message
+                JSON3.read(message)
+            catch e
+                if session.is_closed[]
+                    return
+                end
+                throw(e)
+            end
+
+            # Handle response messages
+            if haskey(data, "id")
+                session.verbose && @info "Processing response message" data=data
+                response = if data isa JSON3.Object
+                    CDPResponse(data)
+                else
+                    CDPResponse(
+                        data["id"],
+                        get(data, "result", nothing),
+                        get(data, "error", nothing)
+                    )
+                end
+                lock(session.lock) do
+                    if haskey(session.callbacks, response.id)
+                        channel = session.callbacks[response.id]
+                        if isopen(channel)
+                            put!(channel, response)
+                        end
+                        delete!(session.callbacks, response.id)
+                    end
+                end
+            # Handle event messages
+            elseif haskey(data, "method")
+                session.verbose && @info "Processing CDP event" method=data["method"]
                 lock(session.lock) do
                     session.verbose && @info "Current event listeners" methods=keys(session.event_listeners)
 
-                    if haskey(session.event_listeners, msg.method)
-                        session.verbose && @info "Found listeners for method" method=msg.method count=length(session.event_listeners[msg.method])
-                        for callback in session.event_listeners[msg.method]
+                    if haskey(session.event_listeners, data["method"])
+                        session.verbose && @info "Found listeners for method" method=data["method"] count=length(session.event_listeners[data["method"]])
+                        for callback in session.event_listeners[data["method"]]
                             @async try
-                                session.verbose && @info "Executing callback for event" method=msg.method
-                                callback(msg.params)
-                                session.verbose && @info "Callback executed successfully" method=msg.method
+                                session.verbose && @info "Executing callback for event" method=data["method"]
+                                callback(data["params"])
+                                session.verbose && @info "Callback executed successfully" method=data["method"]
                             catch e
-                                session.verbose && @error "Event listener failed" method=msg.method exception=e stacktrace=stacktrace()
+                                session.verbose && @error "Event listener failed" method=data["method"] exception=e stacktrace=stacktrace()
                             end
                         end
                     else
-                        session.verbose && @debug "No listeners registered for event method" method=msg.method
+                        session.verbose && @debug "No listeners registered for event method" method=data["method"]
                     end
                 end
             end
         end
     catch e
-        session.is_closed[] = true
-        if e isa ConnectionError
-            session.verbose && @warn "CDP connection closed: $(e.msg)"
-        else
-            session.verbose && @error "Unexpected error processing CDP messages" exception=e
+        if !session.is_closed[]
+            @error "Error in message processing" exception=e
+            rethrow(e)
         end
-        rethrow(e)
+    finally
+        # Ensure all callbacks are cleaned up
+        lock(session.lock) do
+            for channel in values(session.callbacks)
+                isopen(channel) && close(channel)
+            end
+            empty!(session.callbacks)
+        end
     end
 end
 
@@ -198,15 +252,44 @@ Close the CDP session and clean up resources.
 """
 function Base.close(session::CDPSession)
     session.is_closed[] = true
-    close(session.ws)
 
-    # Clean up callbacks
+    # Clean up callbacks and event listeners
     lock(session.lock) do
         for channel in values(session.callbacks)
-            close(channel)
+            isopen(channel) && close(channel)
         end
         empty!(session.callbacks)
         empty!(session.event_listeners)
+    end
+
+    # Close WebSocket connection
+    if isopen(session.ws)
+        try
+            close(session.ws)
+        catch e
+            session.verbose && @warn "Error closing WebSocket" exception=e
+        end
+    end
+
+    # Wait for message processing task with timeout
+    if !isnothing(session.message_task) && !istaskdone(session.message_task)
+        timeout_task = @async begin
+            sleep(5.0)  # 5 second timeout
+            if !istaskdone(session.message_task)
+                try
+                    schedule(session.message_task, InterruptException(), error=true)
+                catch
+                end
+            end
+        end
+
+        try
+            wait(session.message_task)
+        catch e
+            session.verbose && @warn "Message task interrupted during shutdown" exception=e
+        finally
+            wait(timeout_task)
+        end
     end
 end
 

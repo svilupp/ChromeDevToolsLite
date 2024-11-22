@@ -34,6 +34,15 @@ struct CDPResponse <: AbstractCDPMessage
     error::Union{AbstractDict{String,<:Any},Nothing}
 end
 
+# Constructor for JSON3.Object
+function CDPResponse(data::JSON3.Object)
+    CDPResponse(
+        data.id,
+        haskey(data, "result") ? Dict{String,Any}(String(k) => v for (k,v) in pairs(data.result)) : nothing,
+        haskey(data, "error") ? Dict{String,Any}(String(k) => v for (k,v) in pairs(data.error)) : nothing
+    )
+end
+
 """
     CDPEvent
 
@@ -56,7 +65,7 @@ function create_cdp_message(method::AbstractString, params::AbstractDict{String,
 end
 
 # Message ID Counter
-const MESSAGE_ID_COUNTER = Base.Threads.Atomic{Int}(0)
+const MESSAGE_ID_COUNTER = Base.Threads.Atomic{Int}(1)
 
 # Message Serialization
 function JSON3.StructTypes.StructType(::Type{<:AbstractCDPMessage})
@@ -64,19 +73,19 @@ function JSON3.StructTypes.StructType(::Type{<:AbstractCDPMessage})
 end
 
 function JSON3.StructTypes.lower(msg::CDPRequest)
-    Dict{String,<:Any}("id" => msg.id, "method" => msg.method, "params" => msg.params)
+    Dict{String,Any}("id" => msg.id, "method" => msg.method, "params" => msg.params)
 end
 
 function JSON3.StructTypes.lower(msg::CDPResponse)
     if !isnothing(msg.error)
-        Dict{String,<:Any}("id" => msg.id, "error" => msg.error)
+        Dict{String,Any}("id" => msg.id, "error" => msg.error)
     else
-        Dict{String,<:Any}("id" => msg.id, "result" => msg.result)
+        Dict{String,Any}("id" => msg.id, "result" => msg.result)
     end
 end
 
 function JSON3.StructTypes.lower(msg::CDPEvent)
-    Dict{String,<:Any}("method" => msg.method, "params" => msg.params)
+    Dict{String,Any}("method" => msg.method, "params" => msg.params)
 end
 
 # Message Parsing

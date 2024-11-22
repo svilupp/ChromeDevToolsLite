@@ -4,8 +4,8 @@
 Represents a browser instance with an active CDP session and process management.
 """
 mutable struct Browser <: AbstractBrowser
-    process::BrowserProcess
-    session::CDPSession
+    process::AbstractBrowserProcess
+    session::AbstractCDPSession
     contexts::Vector{AbstractBrowserContext}
     options::Dict{AbstractString,<:Any}
     verbose::Bool
