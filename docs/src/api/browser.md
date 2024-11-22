@@ -2,6 +2,7 @@
 
 ```@docs
 Browser
+Page
 connect_browser
 get_pages
 new_page
@@ -60,4 +61,3 @@ end
 The browser operations can throw the following errors:
 - `HTTP.RequestError`: When there are issues connecting to Chrome
 - `ErrorException`: When Chrome is not running or the endpoint is incorrect
-```
