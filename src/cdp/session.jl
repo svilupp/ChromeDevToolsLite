@@ -2,11 +2,6 @@
 Module for managing CDP sessions and message routing.
 """
 
-using Base.Threads
-using WebSockets
-using JSON3
-using ..ChromeDevToolsLite: TimeoutError, retry_with_timeout, ConnectionError
-
 """
     CDPSession
 
@@ -14,12 +9,12 @@ Represents a Chrome DevTools Protocol session managing WebSocket communication a
 """
 mutable struct CDPSession{T}
     ws::T
-    callbacks::AbstractDict{Int,Channel{CDPResponse}}
-    event_listeners::Dict{String,Vector{Function}}  # Keep concrete type for initialization
+    callbacks::AbstractDict{Int, Channel{CDPResponse}}
+    event_listeners::Dict{String, Vector{Function}}  # Keep concrete type for initialization
     lock::ReentrantLock
     is_closed::Ref{Bool}
     verbose::Bool
-    message_task::Union{Task,Nothing}  # Add message processing task reference
+    message_task::Union{Task, Nothing}  # Add message processing task reference
 end
 
 """
@@ -27,11 +22,11 @@ end
 
 Create a new CDP session with the given WebSocket connection.
 """
-function CDPSession(ws::T; verbose::Bool=false) where T
+function CDPSession(ws::T; verbose::Bool = false) where {T}
     session = CDPSession{T}(
         ws,
-        Dict{Int,Channel{CDPResponse}}(),
-        Dict{String,Vector{Function}}(),
+        Dict{Int, Channel{CDPResponse}}(),
+        Dict{String, Vector{Function}}(),
         ReentrantLock(),
         Ref(false),
         verbose,
@@ -50,7 +45,9 @@ end
 Send a CDP request and return a channel that will receive the response.
 Throws ConnectionError if the session is closed.
 """
-function send_message(session::CDPSession, msg::Union{CDPRequest,AbstractDict{AbstractString,<:Any}}; timeout::Int=5000)
+function send_message(
+        session::CDPSession, msg::Union{CDPRequest, AbstractDict{AbstractString, <:Any}};
+        timeout::Int = 5000)
     if session.is_closed[]
         throw(ConnectionError("Cannot send message: CDP session is closed"))
     end
@@ -104,9 +101,11 @@ function add_event_listener(session::CDPSession, method::AbstractString, callbac
             session.verbose && @info "Creating new listener array for method" method=method
             session.event_listeners[method] = Function[]
         end
-        session.verbose && @info "Current listeners for method" method=method count=length(session.event_listeners[method])
+        session.verbose &&
+            @info "Current listeners for method" method=method count=length(session.event_listeners[method])
         push!(session.event_listeners[method], callback)
-        session.verbose && @info "Added listener successfully" method=method new_count=length(session.event_listeners[method])
+        session.verbose &&
+            @info "Added listener successfully" method=method new_count=length(session.event_listeners[method])
     end
 end
 
@@ -115,7 +114,8 @@ end
 
 Remove a callback function for a specific CDP event method.
 """
-function remove_event_listener(session::CDPSession, method::AbstractString, callback::Function)
+function remove_event_listener(
+        session::CDPSession, method::AbstractString, callback::Function)
     lock(session.lock) do
         if haskey(session.event_listeners, method)
             filter!(f -> f !== callback, session.event_listeners[method])
@@ -157,7 +157,8 @@ function process_messages(session::CDPSession)
                 timeout_task = @async begin
                     sleep(5.0)  # 5 second timeout
                     if !istaskdone(read_task) && isopen(read_channel)
-                        put!(read_channel, TimeoutError("WebSocket read operation timed out"))
+                        put!(read_channel,
+                            TimeoutError("WebSocket read operation timed out"))
                         close(read_channel)
                     end
                 end
@@ -206,25 +207,31 @@ function process_messages(session::CDPSession)
                         delete!(session.callbacks, response.id)
                     end
                 end
-            # Handle event messages
+                # Handle event messages
             elseif haskey(data, "method")
                 session.verbose && @info "Processing CDP event" method=data["method"]
                 lock(session.lock) do
-                    session.verbose && @info "Current event listeners" methods=keys(session.event_listeners)
+                    session.verbose &&
+                        @info "Current event listeners" methods=keys(session.event_listeners)
 
                     if haskey(session.event_listeners, data["method"])
-                        session.verbose && @info "Found listeners for method" method=data["method"] count=length(session.event_listeners[data["method"]])
+                        session.verbose &&
+                            @info "Found listeners for method" method=data["method"] count=length(session.event_listeners[data["method"]])
                         for callback in session.event_listeners[data["method"]]
                             @async try
-                                session.verbose && @info "Executing callback for event" method=data["method"]
+                                session.verbose &&
+                                    @info "Executing callback for event" method=data["method"]
                                 callback(data["params"])
-                                session.verbose && @info "Callback executed successfully" method=data["method"]
+                                session.verbose &&
+                                    @info "Callback executed successfully" method=data["method"]
                             catch e
-                                session.verbose && @error "Event listener failed" method=data["method"] exception=e stacktrace=stacktrace()
+                                session.verbose &&
+                                    @error "Event listener failed" method=data["method"] exception=e stacktrace=stacktrace()
                             end
                         end
                     else
-                        session.verbose && @debug "No listeners registered for event method" method=data["method"]
+                        session.verbose &&
+                            @debug "No listeners registered for event method" method=data["method"]
                     end
                 end
             end
@@ -277,7 +284,7 @@ function Base.close(session::CDPSession)
             sleep(5.0)  # 5 second timeout
             if !istaskdone(session.message_task)
                 try
-                    schedule(session.message_task, InterruptException(), error=true)
+                    schedule(session.message_task, InterruptException(), error = true)
                 catch
                 end
             end

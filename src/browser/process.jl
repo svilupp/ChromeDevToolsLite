@@ -2,11 +2,6 @@
 Module for managing browser process and launch configuration.
 """
 
-using Sockets
-using WebSockets
-using JSON3
-using HTTP
-
 """
     BrowserProcess
 
@@ -15,7 +10,7 @@ Represents a running browser process with its debugging endpoint and configurati
 struct BrowserProcess
     pid::Int
     endpoint::String
-    options::Dict{String,Any}
+    options::Dict{String, Any}
 end
 
 """
@@ -74,7 +69,8 @@ function find_chrome()
         "chromium",
         "chromium-browser",
         "google-chrome",
-        "google-chrome-stable"
+        "google-chrome-stable",
+        "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
     ]
 
     # Try to find Chrome in specific paths first, then PATH
@@ -109,45 +105,157 @@ function get_available_port()
     return port_number
 end
 
+# Function to find the PID of the process listening on a given port
+function find_process_id(port::Int; verbose::Bool = true)
+    if Sys.isunix()
+        # Use lsof on Unix-like systems (including macOS)
+        cmd = `lsof -nP -iTCP -sTCP:LISTEN`
+        try
+            output = read(cmd, String)
+            lines = split(chomp(output), '\n')
+            for line in lines[2:end]  # Skip the header line
+                cols = split(strip(line))
+                # Expected format: COMMAND PID USER FD TYPE DEVICE SIZE/OFF NODE NAME (last one can split)
+                if length(cols) >= 9
+                    pid = parse(Int, cols[2])  # PID is the second column
+                    name = cols[end]           # NAME is the last column
+                    m = match(r".*:(\d+)\s*(\(LISTEN\))?", name)
+                    if isnothing(m)
+                        ## It's 10 columns, take penultimate
+                        address = cols[end - 1]
+                        m = match(r":(\d+)", address)
+                    end
+                    if !isnothing(m) && parse(Int, m.captures[1]) == port
+                        return pid
+                    end
+                end
+            end
+        catch e
+            verbose && @warn "Failed to find process ID using lsof" exception=e
+            return nothing
+        end
+        return nothing
+    elseif Sys.iswindows()
+        # Windows implementation without shell pipe
+        try
+            # First run netstat
+            netstat_output = read(`netstat -ano`, String)
+            # Then filter the lines in Julia
+            lines = split(netstat_output, '\n')
+            port_str = ":$port"
+            for line in lines
+                if contains(line, port_str)
+                    cols = split(strip(line))
+                    if length(cols) >= 5 && cols[1] == "TCP"
+                        pid = parse(Int, cols[end])
+                        return pid
+                    end
+                end
+            end
+            return nothing
+        catch e
+            verbose && @warn "Failed to find process ID using netstat" exception=e
+            return nothing
+        end
+    else
+        verbose && @warn "Unsupported operating system for process ID retrieval"
+        return nothing
+    end
+end
+
 """
-    launch_browser_process(;headless::Bool=true, port::Union{Int,Nothing}=nothing, debug::Bool=false) -> BrowserProcess
+    launch_browser_process(;
+        headless::Bool = true,
+        port::Union{Int, Nothing} = nothing,
+        endpoint::Union{String, Nothing} = nothing,
+        verbose::Bool = false)
 
 Launch a new browser process with the specified options.
+Or connect to an existing browser process at the given endpoint.
 """
-function launch_browser_process(;headless::Bool=true, port::Union{Int,Nothing}=nothing, debug::Bool=false, verbose::Bool=false)
+function launch_browser_process(;
+        headless::Bool = true,
+        port::Union{Int, Nothing} = nothing,
+        endpoint::Union{String, Nothing} = nothing,
+        verbose::Bool = false)
+    if !isnothing(endpoint)
+        # Attempt to connect to the existing browser at the given endpoint
+        verbose &&
+            @info "Attempting to connect to existing browser at endpoint" endpoint=endpoint
+        try
+            response = HTTP.get("$endpoint/json/version")
+            if response.status == 200
+                verbose &&
+                    @info "Connected to existing browser at endpoint" endpoint=endpoint
+                pid = find_process_id(parse(Int, split(endpoint, ":")[end]))
+                return BrowserProcess(
+                    isnothing(pid) ? -1 : pid,
+                    endpoint,
+                    Dict{String, Any}("headless" => headless, "verbose" => verbose)
+                )
+            else
+                error("Failed to connect to browser at $endpoint: HTTP $(response.status)")
+            end
+        catch e
+            error("Failed to connect to browser at $endpoint: $e")
+        end
+    elseif !isnothing(port)
+        # Construct the endpoint from the given port
+        endpoint = "http://localhost:$port"
+        verbose &&
+            @info "Attempting to connect to existing browser at endpoint" endpoint=endpoint
+        try
+            response = HTTP.get("$endpoint/json/version")
+            if response.status == 200
+                verbose &&
+                    @info "Connected to existing browser at endpoint" endpoint=endpoint
+                pid = find_process_id(port)
+                return BrowserProcess(
+                    isnothing(pid) ? -1 : pid,
+                    endpoint,
+                    Dict{String, Any}("headless" => headless, "verbose" => verbose)
+                )
+            else
+                # Proceed to launch a new browser if connection fails
+                verbose &&
+                    @warn "No existing browser at $endpoint, will launch a new browser"
+            end
+        catch e
+            # Proceed to launch a new browser if connection fails
+            verbose &&
+                @warn "Failed to connect to browser at $endpoint: $e. Launching a new browser."
+        end
+    end
+
+    # Proceed to launch a new browser process
     chrome_path = find_chrome()
     debug_port = isnothing(port) ? get_available_port() : port
 
     args = copy(DEFAULT_ARGS)
-    filter!(x -> !startswith(x, "--remote-debugging-port"), args)  # Remove any existing port args
+    filter!(x -> !startswith(x, "--remote-debugging-port"), args)
     push!(args, "--remote-debugging-port=$(debug_port)")
 
     if headless
         push!(args, "--headless=new")
     end
 
-    # Launch browser process with more detailed logging
+    # Launch browser process
     process = try
-        verbose && @info "Launching browser process..." chrome_path args
-        # Create temp files for stdout and stderr
-        stdout_file = tempname()
-        stderr_file = tempname()
-        proc = run(pipeline(`$chrome_path $(args)`; stdout=stdout_file, stderr=stderr_file), wait=false)
-        sleep(5.0)  # Increased sleep time to give browser more time to initialize
+        verbose &&
+            @info "Launching new browser process..." chrome_path=chrome_path args=args
+        proc = run(`$chrome_path $(args)`, wait = false)
+        sleep(2.0)  # Allow time for the browser to initialize
         if !process_running(proc)
-            # Read and log the error output if process failed to start
-            stderr_content = read(stderr_file, String)
-            @error "Browser process failed to start" stderr=stderr_content
-            error("Browser process failed to start: $stderr_content")
+            error("Browser process failed to start")
         end
         proc
     catch e
         error("Failed to launch browser process: $e")
     end
 
-    # Get process ID with better error handling
+    # Get process ID
     pid = try
-        if Base.process_running(process)
+        if process_running(process)
             verbose && @info "Browser process started successfully" pid=process.handle
             process.handle
         else
@@ -157,37 +265,31 @@ function launch_browser_process(;headless::Bool=true, port::Union{Int,Nothing}=n
         error("Failed to get browser process ID: $e")
     end
 
-    # Wait for the debugging port with better error handling
+    # Wait for the debugging endpoint to be ready
     endpoint = "http://localhost:$debug_port"
     max_attempts = 30
-    timeout = 5  # Increased timeout
-
-    verbose && @info "Waiting for browser to be ready at $endpoint..."
+    verbose && @info "Waiting for browser to be ready at endpoint" endpoint=endpoint
     for attempt in 1:max_attempts
         try
-            verbose && @info "Attempt $attempt to connect to browser endpoint"
-            # Try to connect to the browser's HTTP endpoint
             response = HTTP.get("$endpoint/json/version")
             if response.status == 200
-                verbose && @info "Browser endpoint ready"
+                verbose && @info "Browser endpoint is ready" attempt=attempt
                 return BrowserProcess(
                     pid,
                     endpoint,
-                    Dict{String,Any}("headless" => headless, "verbose" => verbose)
+                    Dict{String, Any}("headless" => headless, "verbose" => verbose)
                 )
             end
         catch e
-            verbose && @warn "Connection attempt failed" attempt=attempt exception=e
-            if attempt == max_attempts
-                kill(process)
-                error("Failed to connect after $max_attempts attempts: $e")
-            end
-            sleep(1.0)  # Increased sleep time
+            verbose &&
+                @warn "Attempt $attempt: Could not connect to browser endpoint" exception=e
+            sleep(1.0)
         end
     end
 
+    # If all attempts fail, terminate the process
     kill(process)
-    error("Failed to connect to browser")
+    error("Failed to connect to browser endpoint at $endpoint after $max_attempts attempts")
 end
 
 # Helper function to check if process is running
@@ -220,5 +322,3 @@ function kill_browser_process(process::BrowserProcess)
         @warn "Failed to kill browser process" exception=e
     end
 end
-
-export BrowserProcess, launch_browser_process, kill_browser_process

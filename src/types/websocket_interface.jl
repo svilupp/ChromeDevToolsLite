@@ -17,7 +17,9 @@ mutable struct WebSocketConnection <: AbstractWebSocketConnection
     verbose::Bool
 end
 
-WebSocketConnection(ws::WebSocket; verbose::Bool=false) = WebSocketConnection(ws, true, nothing, verbose)
+function WebSocketConnection(ws::WebSocket; verbose::Bool = false)
+    WebSocketConnection(ws, true, nothing, verbose)
+end
 
 """
     Base.isopen(conn::WebSocketConnection) -> Bool
@@ -80,5 +82,3 @@ function Base.close(conn::WebSocketConnection)
         @warn "Error while closing WebSocket connection" exception=(e, catch_backtrace())
     end
 end
-
-export WebSocketConnection, AbstractWebSocketConnection

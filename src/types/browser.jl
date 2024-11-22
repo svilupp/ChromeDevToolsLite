@@ -7,32 +7,42 @@ mutable struct Browser <: AbstractBrowser
     process::AbstractBrowserProcess
     session::AbstractCDPSession
     contexts::Vector{AbstractBrowserContext}
-    options::Dict{AbstractString,<:Any}
+    options::Dict{AbstractString, <:Any}
     verbose::Bool
 end
 
 """
-    Browser(;headless::Bool=true, port::Union{Int,Nothing}=nothing) -> Browser
+    Browser(;
+        headless::Bool = true, port::Union{Int, Nothing} = nothing,
+        verbose::Bool = false, endpoint::Union{String, Nothing} = nothing)
 
 Create and launch a new browser instance with the specified options.
+Or connect to an existing browser process at the given endpoint.
 """
-function Browser(;headless::Bool=true, port::Union{Int,Nothing}=nothing, debug::Bool=false, verbose::Bool=false)
-    launch_browser(;headless=headless, port=port, debug=debug, verbose=verbose)
+function Browser(;
+        headless::Bool = true, port::Union{Int, Nothing} = nothing,
+        verbose::Bool = false, endpoint::Union{String, Nothing} = nothing)
+    launch_browser(;
+        headless = headless, port = port, verbose = verbose, endpoint = endpoint)
 end
 
 """
-    launch_browser(;headless::Bool=true, port::Union{Int,Nothing}=nothing, debug::Bool=false) -> Browser
+    launch_browser(; headless::Bool = true, port::Union{Int, Nothing} = nothing,
+        verbose::Bool = false, endpoint::Union{String, Nothing} = nothing)
 
 Launch a new browser instance with the specified options.
+Or connect to an existing browser process at the given endpoint.
 """
-function launch_browser(;headless::Bool=true, port::Union{Int,Nothing}=nothing, debug::Bool=false, verbose::Bool=false)
-    process = launch_browser_process(;headless=headless, port=port, debug=debug)
+function launch_browser(; headless::Bool = true, port::Union{Int, Nothing} = nothing,
+        verbose::Bool = false, endpoint::Union{String, Nothing} = nothing)
+    process = launch_browser_process(;
+        headless = headless, port = port, verbose = verbose, endpoint = endpoint)
 
     verbose && @info "Establishing WebSocket connection..."
     try
         ws_info = JSON3.read(HTTP.get("$(process.endpoint)/json/version").body)
         ws_url = ws_info["webSocketDebuggerUrl"]
-        debug && @info "Connecting to WebSocket at $ws_url"
+        verbose && @info "Connecting to WebSocket at $ws_url"
 
         # Create a channel for the WebSocket connection
         ws_channel = Channel{WebSocketConnection}(1)
@@ -49,11 +59,12 @@ function launch_browser(;headless::Bool=true, port::Union{Int,Nothing}=nothing, 
 
         # Wait for WebSocket connection
         ws_conn = take!(ws_channel)
-        session = CDPSession(ws_conn; verbose=verbose)
+        session = CDPSession(ws_conn; verbose = verbose)
         verbose && @info "WebSocket connection established"
 
         # Create a new target
-        create_target = create_cdp_message("Target.createTarget", Dict{String,Any}("url" => "about:blank"))
+        create_target = create_cdp_message(
+            "Target.createTarget", Dict{String, Any}("url" => "about:blank"))
         response_channel = send_message(session, create_target)
         response = take!(response_channel)
         if !isnothing(response.error)
@@ -62,7 +73,7 @@ function launch_browser(;headless::Bool=true, port::Union{Int,Nothing}=nothing, 
         target_id = response.result["targetId"]
 
         # Attach to the target
-        attach_params = Dict{String,Any}("targetId" => target_id, "flatten" => true)
+        attach_params = Dict{String, Any}("targetId" => target_id, "flatten" => true)
         attach_target = create_cdp_message("Target.attachToTarget", attach_params)
         response_channel = send_message(session, attach_target)
         response = take!(response_channel)
@@ -72,10 +83,10 @@ function launch_browser(;headless::Bool=true, port::Union{Int,Nothing}=nothing, 
         session_id = response.result["sessionId"]
 
         # Now enable Runtime domain on the target
-        enable_runtime = Dict{String,Any}(
+        enable_runtime = Dict{String, Any}(
             "sessionId" => session_id,
             "method" => "Runtime.enable",
-            "params" => Dict{String,Any}(),
+            "params" => Dict{String, Any}(),
             "id" => get_next_message_id()
         )
         response_channel = send_message(session, enable_runtime)

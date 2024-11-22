@@ -53,7 +53,9 @@ Error raised when an operation times out.
 struct TimeoutError <: ChromeDevToolsError
     msg::AbstractString
     cause::Union{Nothing, Exception}
-    TimeoutError(msg::AbstractString, cause::Union{Nothing, Exception}=nothing) = new(msg, cause)
+    function TimeoutError(msg::AbstractString, cause::Union{Nothing, Exception} = nothing)
+        new(msg, cause)
+    end
 end
 
 """
@@ -61,7 +63,7 @@ end
 
 Handle CDP response errors by throwing appropriate error types.
 """
-function handle_cdp_error(response::AbstractDict{String,<:Any})
+function handle_cdp_error(response::AbstractDict{String, <:Any})
     if haskey(response, "error")
         error_data = response["error"]
         code = get(error_data, "code", -1)
@@ -84,6 +86,3 @@ function handle_cdp_error(response::AbstractDict{String,<:Any})
     end
     nothing
 end
-
-export ChromeDevToolsError, ConnectionError, NavigationError,
-       ElementNotFoundError, EvaluationError, TimeoutError, handle_cdp_error

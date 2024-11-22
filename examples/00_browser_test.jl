@@ -1,7 +1,8 @@
 using ChromeDevToolsLite
-
+const CDP = ChromeDevToolsLite
 # Start browser and create a new page
-browser = Browser()
+# browser = Browser(; endpoint = "http://localhost:9222")
+browser = Browser(; endpoint = "http://localhost:9222")
 context = new_context(browser)
 page = create_page(context)
 

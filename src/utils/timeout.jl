@@ -1,13 +1,4 @@
 """
-    TimeoutError
-
-Custom error type for timeout-related errors.
-"""
-struct TimeoutError <: Exception
-    msg::AbstractString
-end
-
-"""
     with_timeout(f::Function, timeout::Int) -> Any
 
 Execute function f with a timeout (in milliseconds).
@@ -25,7 +16,7 @@ function with_timeout(f::Function, timeout::Int)
         end
     end
 
-    timer = Timer(timeout/1000) do t
+    timer = Timer(timeout / 1000) do t
         put!(result_channel, (:timeout, nothing))
     end
 
@@ -43,28 +34,31 @@ function with_timeout(f::Function, timeout::Int)
 end
 
 """
-    retry_with_timeout(f::Function; timeout::Int=30000, interval::Int=100) -> Any
+    retry_with_timeout(f::Function; timeout::Int=5000, interval::Int=100) -> Any
 
-Retry function f until it succeeds or timeout is reached.
-Waits interval milliseconds between retries.
+Retry a function until it succeeds or timeout is reached.
+Returns the function's return value if successful, throws TimeoutError if timeout is reached.
+
+# Arguments
+- `f::Function`: Function to retry
+- `timeout::Int=5000`: Maximum time to wait in milliseconds
+- `interval::Int=100`: Time between retries in milliseconds
 """
-function retry_with_timeout(f::Function; timeout::Int=30000, interval::Int=100)
-    start_time = time()
-    timeout_seconds = timeout / 1000
-    interval_seconds = interval / 1000
+function retry_with_timeout(f::Function; timeout::Int = 5000, interval::Int = 100)
+    start_time = time() * 1000  # Convert to milliseconds
+    last_error = nothing
 
-    while (time() - start_time) < timeout_seconds
+    while (time() * 1000 - start_time) < timeout
         try
-            return f()
-        catch e
-            if e isa TimeoutError
-                throw(e)
+            result = f()
+            if !isnothing(result)
+                return result
             end
-            sleep(interval_seconds)
+        catch e
+            last_error = e
         end
+        sleep(interval / 1000)  # Convert to seconds
     end
 
-    throw(TimeoutError("Operation timed out after $(timeout)ms"))
+    throw(TimeoutError("Operation timed out after $(timeout)ms", last_error))
 end
-
-export TimeoutError, with_timeout, retry_with_timeout
