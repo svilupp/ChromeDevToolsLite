@@ -2,9 +2,20 @@ module ChromeDevToolsLite
 
 using HTTP, JSON3
 
-# Core types
+"""
+    Browser(endpoint::String)
+
+Represents a connection to a Chrome browser instance running with remote debugging enabled.
+The endpoint is typically "http://localhost:9222" when Chrome is started with --remote-debugging-port=9222.
+
+Throws ArgumentError if endpoint is empty.
+"""
 struct Browser
     endpoint::String
+    function Browser(endpoint::String)
+        isempty(endpoint) && throw(ArgumentError("Browser endpoint cannot be empty"))
+        new(endpoint)
+    end
 end
 
 struct Page
@@ -71,5 +82,12 @@ Close a page/tab.
 function close_page(browser::Browser, page::Page)
     HTTP.get("$(browser.endpoint)/json/close/$(page.id)")
 end
+
+"""
+    Base.show(io::IO, browser::Browser)
+
+Custom display for Browser instances, showing the endpoint URL.
+"""
+Base.show(io::IO, browser::Browser) = print(io, "Browser(endpoint=\"$(browser.endpoint)\")")
 
 end # module
