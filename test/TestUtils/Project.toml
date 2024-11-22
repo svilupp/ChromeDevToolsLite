@@ -1,0 +1,6 @@
+name = "TestUtils"
+uuid = "177ba82d-9c45-4a34-a6a2-2cd67f3f9553"
+version = "0.1.0"
+
+[deps]
+ChromeDevToolsLite = "fd981815-49ad-43be-956f-1ba144983534"
