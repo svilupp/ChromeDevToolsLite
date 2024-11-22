@@ -5,6 +5,11 @@ Module for managing CDP sessions and message routing.
 using Base.Threads
 using ..ChromeDevToolsLite: TimeoutError, retry_with_timeout
 
+"""
+    CDPSession
+
+Represents a Chrome DevTools Protocol session managing WebSocket communication and message routing.
+"""
 mutable struct CDPSession
     ws::AbstractWebSocketConnection
     callbacks::AbstractDict{Int,Channel{CDPResponse}}
@@ -113,6 +118,8 @@ end
     process_messages(session::CDPSession)
 
 Process incoming CDP messages and route them to appropriate handlers.
+
+# API Private
 """
 function process_messages(session::CDPSession)
     try

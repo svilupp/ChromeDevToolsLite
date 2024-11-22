@@ -1,10 +1,17 @@
 # Utilities
 
-## Error Handling
+## Error Types
 
-The package provides comprehensive error handling for all operations:
+```@docs
+ElementNotFoundError
+NavigationError
+EvaluationError
+TimeoutError
+ConnectionError
+```
 
-### Error Types and Common Scenarios
+## Error Handling Examples
+
 ```julia
 # From examples/21_error_handling_comprehensive_test.jl
 
@@ -46,20 +53,6 @@ catch e
 end
 ```
 
-```julia
-# Basic error handling
-try
-    element = wait_for_selector(page, "#non-existent", timeout=5000)
-catch e
-    if e isa TimeoutError
-        println("Element not found within timeout period")
-    elseif e isa ElementNotFoundError
-        println("Element does not exist on the page")
-    else
-        rethrow(e)
-    end
-end
-
 ## Timeout Utilities
 
 All operations support configurable timeouts to control operation duration:
@@ -100,27 +93,19 @@ click(page, "#button", options)
 type_text(page, "#input", "text", options)
 ```
 
-## Timeout Utilities
+## Base Operations
 
-All operations that might take time support timeout options:
+The package implements several Base operations for its core types:
 
-```julia
-# Wait for element with custom timeout
-element = wait_for_selector(page, ".dynamic-content", timeout=10000)  # 10 seconds
-
-# Navigation with timeout
-goto(page, "https://example.com", Dict("timeout" => 30000))  # 30 seconds
-```
-
-### Default Timeouts
-- Page navigation: 30 seconds
-- Element waiting: 30 seconds
-- Script evaluation: 30 seconds
-
-You can override these defaults in individual function calls using the `options` parameter:
-```julia
-options = Dict("timeout" => 5000)  # 5 seconds
-wait_for_selector(page, "#content", options)
+```@docs
+Base.close(::AbstractBrowser)
+Base.close(::AbstractBrowserContext)
+Base.close(::AbstractPage)
+Base.close(::AbstractElementHandle)
+Base.show(::IO, ::AbstractBrowser)
+Base.show(::IO, ::AbstractBrowserContext)
+Base.show(::IO, ::AbstractPage)
+Base.show(::IO, ::AbstractElementHandle)
 ```
 
 ## Resource Management

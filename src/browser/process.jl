@@ -4,10 +4,24 @@ Module for managing browser process and launch configuration.
 
 using Sockets, WebSockets, JSON3
 
+"""
+    BrowserProcess
+
+Represents a running browser process with its debugging endpoint and configuration options.
+"""
 struct BrowserProcess
     pid::Int
     endpoint::String
     options::AbstractDict{String, <:Any}
+end
+
+"""
+    Base.show(io::IO, process::BrowserProcess)
+
+Custom display for BrowserProcess instances, showing the process ID and endpoint.
+"""
+function Base.show(io::IO, process::BrowserProcess)
+    print(io, "BrowserProcess(pid=$(process.pid), endpoint=$(process.endpoint))")
 end
 
 const DEFAULT_ARGS = [

@@ -43,5 +43,6 @@ include("types/browser_context.jl")
 include("types/element_handle.jl")
 include("page/file_input.jl")
 include("page/selectors.jl")  # Add selectors.jl after page.jl
+include("base_operations.jl")  # Include Base operations implementations
 
 end

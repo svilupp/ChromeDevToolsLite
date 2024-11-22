@@ -1,37 +1,23 @@
 # Browser
 
-The `Browser` type represents a browser instance that can be controlled via the Chrome DevTools Protocol.
-
-## Constructor
-
-```julia
-launch_browser(; headless::Bool=true, options::Dict=Dict()) -> Browser
+```@docs
+Browser
+BrowserProcess
+launch_browser
+launch_browser_process
 ```
 
-Launch a new browser instance with the specified options.
+## Browser Context Methods
 
-## Methods
-
-### `new_context`
-```julia
-new_context(browser::Browser; options::Dict=Dict()) -> BrowserContext
+```@docs
+new_context
+create_browser_context
+contexts
+Base.close(::Browser)
+Base.show(::IO, ::Browser)
+Base.show(::IO, ::BrowserProcess)
+kill_browser_process
 ```
-
-Create a new browser context (similar to an incognito window).
-
-### `contexts`
-```julia
-contexts(browser::Browser) -> Vector{BrowserContext}
-```
-
-Get all browser contexts associated with this browser instance.
-
-### `close`
-```julia
-close(browser::Browser)
-```
-
-Close the browser and all associated contexts and pages.
 
 ## Examples
 
@@ -65,3 +51,4 @@ close(browser)
 The browser operations can throw the following errors:
 - `ConnectionError`: When there are issues with the CDP connection
 - `TimeoutError`: When operations exceed their timeout limit
+```

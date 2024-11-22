@@ -1,29 +1,15 @@
 # BrowserContext
 
+```@docs
+BrowserContext
+new_page
+create_page
+pages
+Base.close(::BrowserContext)
+Base.show(::IO, ::BrowserContext)
+```
+
 The `BrowserContext` type represents an isolated browser context, similar to an incognito window.
-
-## Methods
-
-### `new_page`
-```julia
-new_page(context::BrowserContext; options::Dict=Dict()) -> Page
-```
-
-Create a new page within this browser context.
-
-### `pages`
-```julia
-pages(context::BrowserContext) -> Vector{Page}
-```
-
-Get all pages associated with this context.
-
-### `close`
-```julia
-close(context::BrowserContext)
-```
-
-Close the context and all its associated pages.
 
 ## Examples
 

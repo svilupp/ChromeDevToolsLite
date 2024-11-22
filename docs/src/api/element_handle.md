@@ -1,22 +1,31 @@
 # ElementHandle
 
+```@docs
+ElementHandle
+```
+
 The `ElementHandle` type represents a reference to a DOM element within a page.
 
 ## Interaction Methods
 
-### `click`
-```julia
-click(element::ElementHandle; options::Dict=Dict())
+```@docs
+click(::ElementHandle)
+type_text(::ElementHandle, ::String)
+check
+uncheck
+select_option(::ElementHandle, ::String)
 ```
 
-Click the element.
+## State and Property Methods
 
-### `type_text`
-```julia
-type_text(element::ElementHandle, text::String; options::Dict=Dict())
+```@docs
+is_visible(::ElementHandle)
+get_text(::ElementHandle)
+get_attribute(::ElementHandle, ::String)
+evaluate_handle(::ElementHandle, ::String)
+Base.show(::IO, ::ElementHandle)
+Base.close(::ElementHandle)
 ```
-
-Type text into the element.
 
 ### `check`
 ```julia
@@ -102,7 +111,7 @@ elements = query_selector_all(page, ".item")
 for element in elements
     # Get text content
     text = get_text(element)
-    println("Element text: $text")
+    println("Element text: \$text")
 
     # Check visibility
     if is_visible(element)
@@ -111,7 +120,7 @@ for element in elements
 
     # Get attributes
     class_attr = get_attribute(element, "class")
-    println("Class attribute: $class_attr")
+    println("Class attribute: \$class_attr")
 end
 ```
 

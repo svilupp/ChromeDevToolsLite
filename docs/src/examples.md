@@ -111,6 +111,6 @@ for element in elements
     if is_visible(element)
         text = get_text(element)
         testid = get_attribute(element, "data-testid")
-        println("Item $testid: $text")
+        println("Item \$testid: \$text")
     end
 end

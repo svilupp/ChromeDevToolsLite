@@ -1,61 +1,57 @@
 # Page
 
+```@docs
+Page
+```
+
 The `Page` type represents a single page in a browser context.
 
 ## Navigation Methods
 
-### `goto`
-```julia
-goto(page::Page, url::String; options::Dict=Dict())
+```@docs
+goto
+content
+url
+get_title
+wait_for_load
 ```
 
-Navigate to the specified URL.
+## Element Selection and Waiting
 
-### `content`
-```julia
-content(page::Page) -> String
+```@docs
+query_selector
+query_selector_all
+wait_for_selector
+count_elements(::Page, ::String)
+count_elements(::AbstractPage, ::String)
 ```
-
-Get the page's HTML content.
-
-## Element Selection
-
-### `query_selector`
-```julia
-query_selector(page::Page, selector::String) -> Union{ElementHandle, Nothing}
-```
-
-Find first element matching the CSS selector.
-
-### `query_selector_all`
-```julia
-query_selector_all(page::Page, selector::String) -> Vector{ElementHandle}
-```
-
-Find all elements matching the CSS selector.
-
-### `wait_for_selector`
-```julia
-wait_for_selector(page::Page, selector::String; timeout::Int=30000) -> ElementHandle
-```
-
-Wait for an element matching the selector to appear.
 
 ## Interaction Methods
 
-### `click`
-```julia
-click(page::Page, selector::String; options::Dict=Dict())
+```@docs
+click(::Page, ::String)
+type_text(::Page, ::String, ::String)
+press_key
+submit_form
+select_option(::Page, ::String, ::String)
+set_file_input_files
 ```
 
-Click the element matching the selector.
+## State and Property Methods
 
-### `type_text`
-```julia
-type_text(page::Page, selector::String, text::String; options=Dict())
+```@docs
+is_visible(::Page, ::String)
+is_visible(::AbstractPage, ::String)
+get_text(::Page, ::String)
+get_text(::AbstractPage, ::String)
+get_value
+is_checked
+evaluate(::Page, ::String)
+screenshot(::Page)
+screenshot(::Page, ::String)
+Base.show(::IO, ::Page)
+Base.close(::Page)
 ```
-
-Type text into the element matching the selector.
 
 ## Screenshots
 
@@ -70,6 +66,7 @@ Take a screenshot of the page. Supports full page, element-specific, and clipped
 ```julia
 # Full page screenshot
 screenshot(page, "full_page.png")
+```
 
 # Element-specific screenshot
 box = query_selector(page, "#box1")
@@ -96,7 +93,7 @@ try
     items = query_selector_all(page, ".item")
     for item in items
         text = get_text(item)
-        println("Found item: $text")
+        println("Found item: \$text")
     end
 
     # Form interaction

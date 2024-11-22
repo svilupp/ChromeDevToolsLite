@@ -104,7 +104,7 @@ for item in items
     if is_visible(item)
         text = get_text(item)
         testid = get_attribute(item, "data-testid")
-        println("Item $testid: $text")
+        println("Item \$testid: \$text")
     end
 end
 ```

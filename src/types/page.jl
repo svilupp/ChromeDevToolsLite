@@ -7,6 +7,10 @@ using Base64
     Page
 
 Represents a single tab or page in the browser.
+
+# Base Operations
+- `Base.close(page::Page)`: Closes the page and cleans up resources
+- `Base.show(io::IO, page::Page)`: Displays page information in the format "Page(id=session_id)"
 """
 Base.@kwdef mutable struct Page <: AbstractPage
     context::AbstractBrowserContext
@@ -25,13 +29,13 @@ end
 function Page(context::AbstractBrowserContext, session_id::String, target_id::String,
              options::AbstractDict{String,<:Any}=Dict{String,Any}(); verbose::Bool=false)
     page = Page(context=context, session_id=session_id, target_id=target_id,
-                options=Dict{String,Any}(options), verbose=verbose)
+                options=Dict{String,<:Any}(options), verbose=verbose)
     # Enable required domains with timeout
     for domain in ["Page", "Runtime", "DOM"]
         enable_message = Dict{String,<:Any}(
             "sessionId" => session_id,
             "method" => "$(domain).enable",
-            "params" => Dict(),
+            "params" => Dict{String,<:Any}(),
             "id" => get_next_message_id()
         )
         response_channel = send_message(context.browser.session, enable_message, timeout=10000)  # 10 second timeout
@@ -650,15 +654,6 @@ function select_option(page::Page, selector::String, value::String; options::Abs
 end
 
 export click, type_text, press_key, select_option
-
-"""
-    Base.show(io::IO, page::Page)
-
-Custom display for Page instances, showing the target ID and current URL.
-"""
-function Base.show(io::IO, page::Page)
-    print(io, "Page(target_id=$(page.target_id))")
-end
 
 """
     Base.close(page::Page)

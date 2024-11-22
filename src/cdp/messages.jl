@@ -5,20 +5,40 @@ Module for handling Chrome DevTools Protocol (CDP) messages.
 using JSON3.StructTypes
 
 # Message Types
+"""
+    AbstractCDPMessage
+
+Base type for CDP messages.
+"""
 abstract type AbstractCDPMessage end
 
+"""
+    CDPRequest
+
+Represents a CDP request message with an ID, method, and parameters.
+"""
 struct CDPRequest <: AbstractCDPMessage
     id::Int
     method::AbstractString
     params::AbstractDict{String,<:Any}
 end
 
+"""
+    CDPResponse
+
+Represents a CDP response message with an ID and either a result or error.
+"""
 struct CDPResponse <: AbstractCDPMessage
     id::Int
     result::Union{AbstractDict{String,<:Any},Nothing}
     error::Union{AbstractDict{String,<:Any},Nothing}
 end
 
+"""
+    CDPEvent
+
+Represents a CDP event message with a method and parameters.
+"""
 struct CDPEvent <: AbstractCDPMessage
     method::AbstractString
     params::AbstractDict{String,<:Any}

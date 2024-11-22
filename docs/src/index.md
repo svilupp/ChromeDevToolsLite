@@ -47,11 +47,7 @@ finally
 end
 ```
 
-See the [Getting Started](@ref) guide for more examples.
+See the [Getting Started with ChromeDevToolsLite.jl](@ref) guide for more examples.
 
 ```@index
-```
-
-```@autodocs
-Modules = [ChromeDevToolsLite]
 ```

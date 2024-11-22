@@ -12,6 +12,7 @@ makedocs(;
         edit_link="main",
         assets=String[],
     ),
+    warnonly=[:missing_docs],
     pages=[
         "Home" => "index.md",
         "Getting Started" => "getting_started.md",
@@ -20,6 +21,7 @@ makedocs(;
             "BrowserContext" => "api/browser_context.md",
             "Page" => "api/page.md",
             "ElementHandle" => "api/element_handle.md",
+            "CDP Implementation" => "api/cdp.md",
             "Utilities" => "api/utilities.md"
         ],
         "Examples" => "examples.md",
