@@ -6,14 +6,14 @@ Represents an isolated browser context that contains a set of pages.
 mutable struct BrowserContext <: AbstractBrowserContext
     browser::AbstractBrowser
     pages::Vector{AbstractPage}
-    options::Dict{AbstractString,<:Any}
+    options::AbstractDict{String,<:Any}
     context_id::AbstractString
     verbose::Bool
 
     # Default constructor
     function BrowserContext(browser::Browser; verbose::Bool=false)
         # Create browser context via CDP
-        request = create_cdp_message("Target.createBrowserContext", Dict{String,<:Any}())
+        request = create_cdp_message("Target.createBrowserContext", Dict{String,Any}())
         verbose && @info "Creating new browser context..."
         response_channel = send_message(browser.session, request)
         response = take!(response_channel)
@@ -24,7 +24,7 @@ mutable struct BrowserContext <: AbstractBrowserContext
 
         context_id = response.result["browserContextId"]
         verbose && @info "Browser context created with ID: $context_id"
-        new(browser, AbstractPage[], Dict{String,<:Any}(), context_id, verbose)
+        new(browser, AbstractPage[], Dict{String,Any}(), context_id, verbose)
     end
 end
 
@@ -56,8 +56,8 @@ function create_page(context::BrowserContext)
     context.verbose && @info "Creating new page in context" context_id=context.context_id
 
     # Create new target
-    params = Dict{String,<:Any}("browserContextId" => context.context_id)
-    request = create_cdp_message("Target.createTarget", merge(params, Dict{String,<:Any}("url" => "about:blank")))
+    params = Dict{String,Any}("browserContextId" => context.context_id)
+    request = create_cdp_message("Target.createTarget", merge(params, Dict{String,Any}("url" => "about:blank")))
     response_channel = send_message(context.browser.session, request)
     response = take!(response_channel)
 
@@ -69,8 +69,8 @@ function create_page(context::BrowserContext)
     context.verbose && @info "Target created" target_id=target_id
 
     # Attach to target
-    attach_params = Dict{String,<:Any}("targetId" => target_id)
-    attach_request = create_cdp_message("Target.attachToTarget", merge(attach_params, Dict{String,<:Any}("flatten" => true)))
+    attach_params = Dict{String,Any}("targetId" => target_id)
+    attach_request = create_cdp_message("Target.attachToTarget", merge(attach_params, Dict{String,Any}("flatten" => true)))
     response_channel = send_message(context.browser.session, attach_request)
     response = take!(response_channel)
 
@@ -79,13 +79,13 @@ function create_page(context::BrowserContext)
     end
     context.verbose && @info "Attached to target" target_id=target_id
 
-    page = Page(context, response.result["sessionId"], target_id, Dict{String,<:Any}(), verbose=context.verbose)
+    page = Page(context, response.result["sessionId"], target_id, Dict{String,Any}(), verbose=context.verbose)
 
     # Enable required domains
-    enable_msg = Dict{String,<:Any}(
+    enable_msg = Dict{String,Any}(
         "sessionId" => page.session_id,
         "method" => "Runtime.enable",
-        "params" => Dict{String,<:Any}(),
+        "params" => Dict{String,Any}(),
         "id" => get_next_message_id()
     )
     response_channel = send_message(context.browser.session, enable_msg)

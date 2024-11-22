@@ -28,7 +28,7 @@ function CDPSession(ws::AbstractWebSocketConnection; verbose::Bool=false)
     session = CDPSession(
         ws,
         Dict{Int,Channel{CDPResponse}}(),
-        Dict{AbstractString,Vector{Function}}(),
+        Dict{String,Vector{Function}}(),
         ReentrantLock(),
         Ref(false),
         verbose

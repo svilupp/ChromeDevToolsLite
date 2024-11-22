@@ -47,7 +47,7 @@ include("page/selectors.jl")  # Add selectors.jl after page.jl
 # Include Base operations implementations
 include("base_operations.jl")
 
-# Export Base operations
-export Base.close, Base.show
+# Import and export Base operations
+import Base: close, show
 
 end

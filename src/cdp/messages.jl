@@ -88,7 +88,7 @@ Parse a raw CDP message into the appropriate message type.
 function parse_cdp_message(data::AbstractDict{String,<:Any})
     if haskey(data, "id")
         if haskey(data, "method")
-            return CDPRequest(data["id"], data["method"], get(data, "params", Dict{String,<:Any}()))
+            return CDPRequest(data["id"], data["method"], get(data, "params", Dict{String,Any}()))
         else
             return CDPResponse(
                 data["id"],
@@ -97,7 +97,7 @@ function parse_cdp_message(data::AbstractDict{String,<:Any})
             )
         end
     else
-        return CDPEvent(data["method"], get(data, "params", Dict{String,<:Any}()))
+        return CDPEvent(data["method"], get(data, "params", Dict{String,Any}()))
     end
 end
 

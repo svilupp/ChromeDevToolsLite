@@ -16,7 +16,7 @@ Base.@kwdef mutable struct Page <: AbstractPage
     context::AbstractBrowserContext
     session_id::AbstractString
     target_id::AbstractString
-    options::Dict{String,<:Any} = Dict{String,<:Any}()
+    options::Dict{String,<:Any} = Dict{String,Any}()
     verbose::Bool = false
 end
 
@@ -27,15 +27,15 @@ end
 
 # Full constructor
 function Page(context::AbstractBrowserContext, session_id::AbstractString, target_id::AbstractString,
-             options::AbstractDict{String,<:Any}=Dict{String,<:Any}(); verbose::Bool=false)
+             options::AbstractDict{String,<:Any}=Dict{String,Any}(); verbose::Bool=false)
     page = Page(context=context, session_id=session_id, target_id=target_id,
-                options=Dict{String,<:Any}(options), verbose=verbose)
+                options=Dict{String,Any}(options), verbose=verbose)
     # Enable required domains with timeout
     for domain in ["Page", "Runtime", "DOM"]
-        enable_message = Dict{String,<:Any}(
+        enable_message = Dict{String,Any}(
             "sessionId" => session_id,
             "method" => "$(domain).enable",
-            "params" => Dict{String,<:Any}(),
+            "params" => Dict{String,Any}(),
             "id" => get_next_message_id()
         )
         response_channel = send_message(context.browser.session, enable_message, timeout=10000)  # 10 second timeout
@@ -68,7 +68,7 @@ end
 
 Navigate the page to the specified URL and wait for navigation to complete.
 """
-function goto(page::Page, url::AbstractString; options::AbstractDict{String,<:Any}=Dict{String,<:Any}())
+function goto(page::Page, url::AbstractString; options::AbstractDict{String,<:Any}=Dict{String,Any}())
     # Create a channel to track navigation completion
     nav_channel = Channel{Bool}(1)
 
@@ -86,9 +86,9 @@ function goto(page::Page, url::AbstractString; options::AbstractDict{String,<:An
 
     try
         # Send navigation request
-        params = Dict{String,<:Any}("url" => url)
+        params = Dict{String,Any}("url" => url)
         request = create_cdp_message("Page.navigate", merge(params, options))
-        message = Dict{String,<:Any}(
+        message = Dict{String,Any}(
             "sessionId" => page.session_id,
             "method" => request.method,
             "params" => request.params,
@@ -291,8 +291,8 @@ function query_selector(page::Page, selector::AbstractString)
     page.verbose && @info "Querying selector" selector
 
     # First get the document root
-    root_request = create_cdp_message("DOM.getDocument", Dict{String,<:Any}())
-    root_message = Dict{String,<:Any}(
+    root_request = create_cdp_message("DOM.getDocument", Dict{String,Any}())
+    root_message = Dict{String,Any}(
         "sessionId" => page.session_id,
         "method" => root_request.method,
         "params" => root_request.params,
@@ -311,9 +311,9 @@ function query_selector(page::Page, selector::AbstractString)
 
     # Then query the selector
     page.verbose && @info "Querying DOM for selector"
-    params = Dict{String,<:Any}("nodeId" => root_node_id, "selector" => selector)
+    params = Dict{String,Any}("nodeId" => root_node_id, "selector" => selector)
     request = create_cdp_message("DOM.querySelector", params)
-    message = Dict{String,<:Any}(
+    message = Dict{String,Any}(
         "sessionId" => page.session_id,
         "method" => request.method,
         "params" => request.params,
@@ -342,7 +342,7 @@ function query_selector(page::Page, selector::AbstractString)
         })()
         """
         evaluate(page, js_code)
-        return ElementHandle(page, node_id, Dict{String,<:Any}())
+        return ElementHandle(page, node_id, Dict{String,Any}())
     end
     return nothing
 end
@@ -352,15 +352,15 @@ end
 
 Takes a screenshot of the page and returns it as a base64-encoded string.
 """
-function screenshot(page::Page; options::AbstractDict{String,<:Any}=Dict{String,<:Any}())
+function screenshot(page::Page; options::AbstractDict{String,<:Any}=Dict{String,Any}())
     page.verbose && @info "Taking screenshot" options
 
-    params = Dict{String,<:Any}(
+    params = Dict{String,Any}(
         "format" => get(options, "format", "png"),
         "quality" => get(options, "quality", 100),
         "fromSurface" => get(options, "fromSurface", true)
     )
-    message = Dict{String,<:Any}(
+    message = Dict{String,Any}(
         "sessionId" => page.session_id,
         "method" => "Page.captureScreenshot",
         "params" => params,
@@ -393,7 +393,7 @@ function screenshot(page::Page, path::AbstractString; options::AbstractDict{Stri
 end
 
 function evaluate_script(page::Page, script::AbstractString, args::Vector=[])
-    response = send_message(page.session, "Runtime.evaluate", Dict{String,<:Any}(
+    response = send_message(page.session, "Runtime.evaluate", Dict{String,Any}(
         "expression" => script,
         "arguments" => args,
         "returnByValue" => true,
@@ -439,8 +439,8 @@ function query_selector_all(page::Page, selector::AbstractString)
 
     # First get the document root
     page.verbose && @info "Getting document root"
-    root_request = create_cdp_message("DOM.getDocument", Dict{String,<:Any}())
-    root_message = Dict{String,<:Any}(
+    root_request = create_cdp_message("DOM.getDocument", Dict{String,Any}())
+    root_message = Dict{String,Any}(
         "sessionId" => page.session_id,
         "method" => root_request.method,
         "params" => root_request.params,
@@ -457,9 +457,9 @@ function query_selector_all(page::Page, selector::AbstractString)
 
     page.verbose && @info "Querying all matching elements"
     # Query all matching elements
-    params = Dict{String,<:Any}("nodeId" => root_node_id, "selector" => selector)
+    params = Dict{String,Any}("nodeId" => root_node_id, "selector" => selector)
     request = create_cdp_message("DOM.querySelectorAll", params)
-    message = Dict{String,<:Any}(
+    message = Dict{String,Any}(
         "sessionId" => page.session_id,
         "method" => request.method,
         "params" => request.params,
@@ -478,7 +478,7 @@ function query_selector_all(page::Page, selector::AbstractString)
     elements = ElementHandle[]
     for node_id in response.result["nodeIds"]
         if node_id != 0
-            push!(elements, ElementHandle(page, node_id, Dict{String,<:Any}()))
+            push!(elements, ElementHandle(page, node_id, Dict{String,Any}()))
         end
     end
 
@@ -614,7 +614,7 @@ Simulates pressing a keyboard key. The key should be a valid key value like "Ent
 """
 function press_key(page::Page, key::AbstractString; options::AbstractDict{String,<:Any}=Dict{String,Any}())
     page.verbose && @info "Pressing key" key
-    params = Dict{String,<:Any}(
+    params = Dict{String,Any}(
         "type" => "keyDown",
         "key" => key
     )

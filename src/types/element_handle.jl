@@ -6,7 +6,7 @@ Represents a handle to a DOM element in a page.
 mutable struct ElementHandle <: AbstractElementHandle
     page::AbstractPage
     element_id::Int
-    options::Dict{String,<:Any}
+    options::AbstractDict{String,<:Any}
     verbose::Bool
 
     function ElementHandle(page::AbstractPage, element_id::Int, options::AbstractDict{String,<:Any}=Dict{String,<:Any}(); verbose::Bool=false)
@@ -54,7 +54,7 @@ Clicks the element.
 """
 function click(element::ElementHandle; options::AbstractDict{String,<:Any}=Dict{String,<:Any}())
     element.verbose && @info "Clicking element" element_id=element.element_id
-    params = Dict{String,<:Any}(
+    params = Dict{String,Any}(
         "nodeId" => element.element_id,
         "clickCount" => get(options, "clickCount", 1)
     )
@@ -77,7 +77,7 @@ Types text into the element.
 function type_text(element::ElementHandle, text::AbstractString; options::AbstractDict{String,<:Any}=Dict{String,<:Any}())
     element.verbose && @info "Typing text into element" element_id=element.element_id text=text
     # First focus the element
-    focus_params = Dict{String,<:Any}("nodeId" => element.element_id)
+    focus_params = Dict{String,Any}("nodeId" => element.element_id)
     focus_request = create_cdp_message("DOM.focus", focus_params)
     response_channel = send_message(element.page.context.browser.session, focus_request)
     response = take!(response_channel)
@@ -87,7 +87,7 @@ function type_text(element::ElementHandle, text::AbstractString; options::Abstra
     end
 
     # Then send keyboard events
-    type_params = Dict{String,<:Any}(
+    type_params = Dict{String,Any}(
         "text" => text,
         "type" => "keyDown"
     )
@@ -110,7 +110,7 @@ Checks a checkbox or radio button element.
 function check(element::ElementHandle; options::AbstractDict{String,<:Any}=Dict{String,<:Any}())
     element.verbose && @info "Checking element" element_id=element.element_id
     # First ensure element is visible and clickable
-    params = Dict{String,<:Any}("nodeId" => element.element_id)
+    params = Dict{String,Any}("nodeId" => element.element_id)
     request = create_cdp_message("DOM.focus", params)
     response_channel = send_message(element.page.context.browser.session, request)
     response = take!(response_channel)
@@ -152,7 +152,7 @@ Selects an option in a select element by its value.
 """
 function select_option(element::ElementHandle, value::AbstractString; options::AbstractDict{String,<:Any}=Dict{String,<:Any}())
     element.verbose && @info "Selecting option in element" element_id=element.element_id value=value
-    params = Dict{String,<:Any}(
+    params = Dict{String,Any}(
         "nodeId" => element.element_id,
         "value" => value
     )
@@ -174,7 +174,7 @@ Checks if the element is visible on the page.
 """
 function is_visible(element::ElementHandle)
     element.verbose && @info "Checking element visibility" element_id=element.element_id
-    params = Dict{String,<:Any}("nodeId" => element.element_id)
+    params = Dict{String,Any}("nodeId" => element.element_id)
     request = create_cdp_message("DOM.getBoxModel", params)
     response_channel = send_message(element.page.context.browser.session, request)
     response = take!(response_channel)
@@ -211,7 +211,7 @@ Gets the value of the specified attribute.
 """
 function get_attribute(element::ElementHandle, name::AbstractString)
     element.verbose && @info "Getting attribute" element_id=element.element_id attribute=name
-    params = Dict{String,<:Any}(
+    params = Dict{String,Any}(
         "nodeId" => element.element_id,
         "name" => name
     )
@@ -259,13 +259,13 @@ function evaluate_handle(element::ElementHandle, expression::AbstractString)
     """
 
     # Create properly formatted CDP message
-    eval_params = Dict{String,<:Any}(
+    eval_params = Dict{String,Any}(
         "expression" => js_code,
         "returnByValue" => true,
         "awaitPromise" => true
     )
 
-    message = Dict{String,<:Any}(
+    message = Dict{String,Any}(
         "sessionId" => element.page.session_id,
         "method" => "Runtime.evaluate",
         "params" => eval_params,

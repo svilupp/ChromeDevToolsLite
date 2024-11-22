@@ -153,7 +153,7 @@ function launch_browser_process(;headless::Bool=true, port::Union{Int,Nothing}=n
                 return BrowserProcess(
                     pid,
                     endpoint,
-                    Dict{AbstractString,<:Any}("headless" => headless, "verbose" => verbose)
+                    Dict{String,Any}("headless" => headless, "verbose" => verbose)
                 )
             end
         catch e
