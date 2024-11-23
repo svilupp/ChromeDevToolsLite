@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CDP Test Page</title>
+    <style>
+        .hidden { display: none; }
+        .visible { display: block; }
+    </style>
+</head>
+<body>
+    <h1>CDP Test Page</h1>
+
+    <!-- Test visibility -->
+    <div id="visible-element" class="visible">This element is visible</div>
+    <div id="hidden-element" class="hidden">This element is hidden</div>
+
+    <!-- Test text content -->
+    <div id="text-content">Sample text content</div>
+
+    <!-- Test form elements -->
+    <form id="test-form">
+        <input type="text" id="text-input" placeholder="Enter text">
+        <button type="button" id="toggle-button" onclick="document.getElementById('hidden-element').classList.toggle('hidden')">
+            Toggle Hidden Element
+        </button>
+    </form>
+
+    <!-- Test element count -->
+    <ul id="item-list">
+        <li>Item 1</li>
+        <li>Item 2</li>
+        <li>Item 3</li>
+    </ul>
+</body>
+</html>
