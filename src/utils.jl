@@ -4,7 +4,8 @@
 Extract values from CDP responses with configurable path traversal.
 Returns the extracted value or nothing if the path doesn't exist.
 """
-function extract_cdp_result(response::Dict, path::Vector{String}=["result", "result", "value"])
+function extract_cdp_result(
+        response::Dict, path::Vector{String} = ["result", "result", "value"])
     current = response
     for key in path
         if haskey(current, key)
@@ -49,5 +50,3 @@ function extract_element_result(response::Dict)
 
     return nothing
 end
-
-export extract_cdp_result, extract_element_result

@@ -1,11 +1,3 @@
-using ChromeDevToolsLite
-using Test
-using HTTP
-using Logging
-
-# Set up logging
-ENV["JULIA_DEBUG"] = "ChromeDevToolsLite"
-
 function setup_test()
     @debug "Setting up test environment"
     sleep(0.5)  # Give Chrome time to stabilize
@@ -23,7 +15,8 @@ end
         setup_test()
 
         @debug "Creating WebSocket client"
-        client = WSClient("ws://localhost:9222/devtools/page/$(get_ws_id())")
+        ws_id = get_ws_id(; endpoint = "http://localhost:9222")
+        client = WSClient("ws://localhost:9222/devtools/page/$ws_id")
         @test client isa WSClient
 
         @debug "Connecting client"
@@ -42,7 +35,7 @@ end
         # More robust Chrome readiness check
         for attempt in 1:5
             @info "Chrome readiness check attempt $attempt/5"
-            if ensure_chrome_running(max_attempts=3, delay=2.0)
+            if ensure_chrome_running(max_attempts = 3, delay = 2.0)
                 break
             elseif attempt == 5
                 error("Chrome failed to start properly after multiple attempts")
@@ -53,26 +46,10 @@ end
         @debug "Connecting to Chrome DevTools"
         client = nothing
         try
-            # Multiple attempts to get WebSocket ID
-            local ws_id
-            for attempt in 1:3
-                try
-                    ws_id = get_ws_id()
-                    @info "Retrieved WebSocket ID" ws_id=ws_id
-                    break
-                catch e
-                    if attempt == 3
-                        @error "Failed to get WebSocket ID after 3 attempts" exception=e
-                        rethrow(e)
-                    end
-                    sleep(1.0)
-                end
-            end
-
             # Connect with retry
             for attempt in 1:3
                 try
-                    client = connect_cdp("ws://localhost:9222/devtools/page/$ws_id")
+                    client = connect_browser("http://localhost:9222")
                     @test client isa WSClient
                     @test client.is_connected
                     break
@@ -88,24 +65,9 @@ end
             @debug "Testing Page.enable command"
             response = send_cdp_message(client, "Page.enable")
             @info "CDP Response received" response=response
-
-            # More detailed response validation
-            @test isa(response, Dict) || begin
-                @error "Response is not a dictionary" type=typeof(response)
-                error("Invalid response type")
-            end
-
-            @test (haskey(response, "result") || haskey(response, "error")) || begin
-                @error "Response missing both result and error fields" response=response
-                error("Invalid response format")
-            end
-
-            if haskey(response, "error")
-                @error "CDP command failed" error=response["error"]
-                error("Page.enable command failed: $(response["error"])")
-            end
-
-            @test haskey(response, "result") "Expected result field in response"
+            @test isa(response, Dict)
+            @test haskey(response, "id")
+            @test haskey(response, "result")
         catch e
             @error "CDP test failed" exception=e stacktrace=stacktrace()
             rethrow(e)
@@ -128,21 +90,26 @@ end
         send_cdp_message(client, "Runtime.enable")
 
         @debug "Navigating to example.com"
-        response = send_cdp_message(client, "Page.navigate", Dict{String, Any}("url" => "https://example.com"))
+        response = send_cdp_message(
+            client, "Page.navigate", Dict{String, Any}("url" => "https://example.com"))
         @test haskey(response, "result") || error("Navigation failed: $response")
-        @test haskey(response["result"], "frameId") || error("No frameId in response: $response")
+        @test haskey(response["result"], "frameId") ||
+              error("No frameId in response: $response")
 
         sleep(1)  # Wait for page load
 
         @debug "Evaluating page title"
-        eval_response = send_cdp_message(client, "Runtime.evaluate", Dict{String, Any}(
-            "expression" => "document.title",
-            "returnByValue" => true
-        ))
+        eval_response = send_cdp_message(client, "Runtime.evaluate",
+            Dict{String, Any}(
+                "expression" => "document.title",
+                "returnByValue" => true
+            ))
 
         @test haskey(eval_response, "result") || error("Evaluation failed: $eval_response")
-        @test haskey(eval_response["result"], "result") || error("No result in evaluation: $eval_response")
-        result_value = get(get(get(eval_response, "result", Dict()), "result", Dict()), "value", nothing)
+        @test haskey(eval_response["result"], "result") ||
+              error("No result in evaluation: $eval_response")
+        result_value = get(
+            get(get(eval_response, "result", Dict()), "result", Dict()), "value", nothing)
         @test result_value == "Example Domain" || error("Unexpected title: $result_value")
 
         close(client)
@@ -157,7 +124,8 @@ end
 
         # Enable Page domain and navigate
         send_cdp_message(client, "Page.enable")
-        send_cdp_message(client, "Page.navigate", Dict{String, Any}("url" => "https://example.com"))
+        send_cdp_message(
+            client, "Page.navigate", Dict{String, Any}("url" => "https://example.com"))
 
         # Add a small delay to ensure page is loaded
         sleep(1)
@@ -165,7 +133,8 @@ end
         # Take screenshot
         response = send_cdp_message(client, "Page.captureScreenshot")
         @test haskey(response, "result") || error("Screenshot failed: $response")
-        @test haskey(response["result"], "data") || error("No image data in response: $response")
+        @test haskey(response["result"], "data") ||
+              error("No image data in response: $response")
         close(client)
     end
 end

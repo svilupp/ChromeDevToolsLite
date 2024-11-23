@@ -1,17 +1,6 @@
-using HTTP.WebSockets
-using JSON3
-using Base.Threads: @async
-using Logging
-
 struct TimeoutError <: Exception
     msg::String
 end
-
-const MAX_RECONNECT_ATTEMPTS = 3
-const RECONNECT_DELAY = 1.0
-const CONNECTION_TIMEOUT = 5.0
-
-import HTTP.WebSockets: WebSocketError
 
 """
     start_message_handler(client::WSClient)
@@ -71,12 +60,12 @@ function try_connect(client::WSClient)
             @debug "Attempting connection" attempt=attempt url=client.ws_url
 
             # Create channels for connection status
-            connection_status = Channel{Union{WebSocket,Exception}}(1)
+            connection_status = Channel{Union{WebSocket, Exception}}(1)
 
             # Create a connection task
             @async begin
                 try
-                    WebSockets.open(client.ws_url; suppress_close_error=true) do ws
+                    WebSockets.open(client.ws_url; suppress_close_error = true) do ws
                         client.ws = ws
                         client.is_connected = true
                         put!(connection_status, ws)
@@ -95,7 +84,8 @@ function try_connect(client::WSClient)
             @async begin
                 sleep(CONNECTION_TIMEOUT)
                 if !isready(connection_status)
-                    put!(connection_status, TimeoutError("Connection timeout after $(CONNECTION_TIMEOUT) seconds"))
+                    put!(connection_status,
+                        TimeoutError("Connection timeout after $(CONNECTION_TIMEOUT) seconds"))
                 end
             end
 
@@ -149,49 +139,52 @@ end
 
 Send a CDP message and wait for the response. Includes automatic reconnection on failure.
 """
-function send_cdp_message(client::WSClient, method::String, params::Dict=Dict(); increment_id::Bool=true)
+function send_cdp_message(
+        client::WSClient, method::String, params::Dict = Dict(); increment_id::Bool = true)
     if !client.is_connected || isnothing(client.ws)
         @warn "WebSocket not connected, attempting reconnection"
         try_connect(client)
     end
 
     # Convert params to Dict{String,Any}
-    typed_params = Dict{String,Any}(String(k) => v for (k,v) in params)
+    typed_params = Dict{String, Any}(String(k) => v for (k, v) in params)
 
     id = client.next_id
     if increment_id
         client.next_id += 1
     end
 
-    message = Dict{String,Any}(
+    message = Dict{String, Any}(
         "id" => id,
         "method" => method,
         "params" => typed_params
     )
 
-    response_channel = Channel{Dict{String,Any}}(1)
+    response_channel = Channel{Dict{String, Any}}(1)
 
     @async begin
         try
             WebSockets.send(client.ws, JSON3.write(message))
 
             # Add timeout for response
-            timeout_task = @async begin
+            timeout_task = @task begin
                 sleep(CONNECTION_TIMEOUT)
-                put!(response_channel, Dict("error" => Dict("message" => "Response timeout")))
+                put!(response_channel,
+                    Dict("error" => Dict("message" => "Response timeout")))
             end
 
             while client.is_connected
                 msg = take!(client.message_channel)
                 if haskey(msg, "id") && msg["id"] == id
-                    schedule(timeout_task, InterruptException(); error=true)
+                    schedule(timeout_task, InterruptException(); error = true)
                     put!(response_channel, msg)
                     break
                 end
             end
         catch e
             @error "Error sending CDP message" exception=e method=method
-            put!(response_channel, Dict("error" => Dict("message" => "Failed to send message: $e")))
+            put!(response_channel,
+                Dict("error" => Dict("message" => "Failed to send message: $e")))
         end
     end
 
@@ -259,5 +252,3 @@ function is_connected(ws::WebSocket)
         return false
     end
 end
-
-export connect!, send_cdp_message, close, handle_event, is_connected, try_connect

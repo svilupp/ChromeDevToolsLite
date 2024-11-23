@@ -1,7 +1,3 @@
-using HTTP, JSON3
-using Logging
-include("utils.jl")
-
 """
     ElementHandle
 
@@ -319,6 +315,3 @@ function evaluate_handle(element::ElementHandle, expression::String)
     end
     return response["value"]
 end
-
-export ElementHandle, click, type_text, check, uncheck, select_option,
-       is_visible, get_text, get_attribute, evaluate_handle

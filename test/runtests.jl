@@ -8,20 +8,7 @@ ENV["JULIA_DEBUG"] = "ChromeDevToolsLite"
 logger = ConsoleLogger(stderr, Logging.Debug)
 global_logger(logger)
 
-include("setup_chrome.jl")
 include("test_utils.jl")
-
-# Global cleanup function
-function cleanup()
-    try
-        if Sys.islinux()
-            run(`pkill chrome`)
-            sleep(1)  # Give time for process to terminate
-        end
-    catch
-        # Ignore cleanup errors
-    end
-end
 
 # Ensure Chrome is running before tests
 @testset "ChromeDevToolsLite.jl" begin
@@ -45,12 +32,12 @@ end
             error("Failed to set up Chrome for testing")
         end
 
-        @testset "Basic Functionality" begin
-            include("basic_test.jl")
-        end
-
         @testset "WebSocket Implementation" begin
             include("websocket_test.jl")
+        end
+
+        @testset "Basic Functionality" begin
+            include("basic_test.jl")
         end
 
         @testset "Element Interactions" begin
