@@ -44,8 +44,8 @@ close(client)
 
 ### Page Navigation
 - Use `goto` to navigate to URLs
-- Use `query_selector` to find elements
-- `content` retrieves the page's HTML
+- Use `ElementHandle` to find elements
+- Use `content` to retrieve the page's HTML
 
 ### Element Interaction
 - Find elements using CSS selectors
@@ -71,55 +71,61 @@ end
 
 2. Use timeouts appropriately:
 ```julia
-# Wait for element to be available
-element = query_selector(client, "#slow-element")
-```
+# Find element when ready
+element = ElementHandle(client, "#slow-element")
+if !isnothing(element)
+    # Interact with the element
 
 3. Handle errors gracefully:
 ```julia
 try
-    element = query_selector(client, "#maybe-exists")
+    element = ElementHandle(client, "#maybe-exists")
     if !isnothing(element)
         click(element)
     end
 catch e
-    @warn "Element not found or interaction failed"
+    @warn "Element not found or interaction failed" exception=e
     rethrow(e)
 end
 ```
 
 4. Working with Multiple Elements:
 ```julia
-# From examples/15_query_selector_all_test.jl
-all_items = query_selector_all(client, ".item")
+# Find multiple elements
+items = [ElementHandle(client, ".item") for _ in 1:3]
 for item in items
     if is_visible(item)
         text = get_text(item)
         testid = get_attribute(item, "data-testid")
-        println("Item \$testid: \$text")
+        println("Item $testid: $text")
     end
 end
 ```
 
 5. Form Interactions:
 ```julia
-# From examples/03_page_interactions.jl
-type_text(client, "#name", "John Doe")
-select_option(client, "#color", "blue")
-click(client, "button[type='submit']")
+# Fill out a form
+name_input = ElementHandle(client, "#name")
+type_text(name_input, "John Doe")
+
+color_select = ElementHandle(client, "#color")
+select_option(color_select, "blue")
+
+submit_button = ElementHandle(client, "button[type='submit']")
+click(submit_button)
 
 # Verify submission
-result_text = get_text(client, "#result")
-@assert contains(result_text, "John Doe")
+result = ElementHandle(client, "#result")
+@assert contains(get_text(result), "John Doe")
 ```
 
 6. Screenshots:
 ```julia
 # From examples/16_screenshot_comprehensive_test.jl
 # Full page screenshot
-screenshot(client, "full_page.png")
+screenshot(client)
 
 # Element-specific screenshot
-header = query_selector(client, "header")
-screenshot(header, "header.png")
+header = ElementHandle(client, "header")
+screenshot(header)
 ```
