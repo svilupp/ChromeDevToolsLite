@@ -17,7 +17,18 @@ function goto(client::WSClient, url::String; verbose::Bool=false)
     send_cdp_message(client, "Page.enable", Dict{String, Any}())
 
     # Navigate to URL
-    send_cdp_message(client, "Page.navigate", Dict{String, Any}("url" => url))
+    result = send_cdp_message(client, "Page.navigate", Dict{String, Any}("url" => url))
+
+    # Check for navigation errors
+    if haskey(result, "errorText")
+        throw(NavigationError("Navigation failed: $(result["errorText"])"))
+    end
+
+    # Wait for page load
+    load_event = wait_for_event(client, "Page.loadEventFired")
+    if load_event === nothing || haskey(load_event, "error")
+        throw(NavigationError("Page load timed out or failed"))
+    end
 
     # Enable runtime for JavaScript evaluation
     send_cdp_message(client, "Runtime.enable", Dict{String, Any}())
