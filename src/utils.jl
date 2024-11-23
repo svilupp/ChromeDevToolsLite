@@ -1,4 +1,23 @@
 """
+    ElementNotFoundError(msg)
+    NavigationError(msg)
+    EvaluationError(msg)
+
+Custom error types for ChromeDevToolsLite.
+"""
+struct ElementNotFoundError <: Exception
+    msg::String
+end
+
+struct NavigationError <: Exception
+    msg::String
+end
+
+struct EvaluationError <: Exception
+    msg::String
+end
+
+"""
     extract_cdp_result(response::Dict, path::Vector{String}=["result", "result", "value"])
 
 Extract values from CDP responses with configurable path traversal.

@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Navigation Test</title>
+</head>
+<body>
+    <h1>Navigation Test Page</h1>
+    <div id="content">Navigation Content</div>
+    <button id="redirect-button" onclick="window.location.href='page_operations.html'">Redirect</button>
+    <script>
+        // Function to test navigation errors
+        function triggerNavigationError() {
+            window.location.href = 'nonexistent.html';
+            return true;
+        }
+
+        // Function to test navigation state
+        function getNavigationState() {
+            return {
+                href: window.location.href,
+                pathname: window.location.pathname,
+                hash: window.location.hash,
+                search: window.location.search
+            };
+        }
+    </script>
+</body>
+</html>

@@ -92,11 +92,18 @@ function connect_browser(endpoint::String = "http://localhost:9222"; max_retries
 end
 
 """
-    ensure_chrome_running(; endpoint="http://localhost:9222", max_attempts=5, delay=1.0, verbose::Bool=false)
+    ensure_chrome_running(; endpoint="http://localhost:9222", max_attempts=5, delay=1.0, verbose::Bool=false) -> Bool
 
-Checks if Chrome is running in debug mode on port 9222.
-Retries up to max_attempts times with specified delay between attempts.
-Returns true if Chrome is responding on the debug port.
+Checks if Chrome is running in debug mode and attempts to connect.
+
+# Arguments
+- `endpoint::String`: Chrome DevTools Protocol endpoint URL (default: "http://localhost:9222")
+- `max_attempts::Int`: Maximum number of connection attempts (default: 5)
+- `delay::Float64`: Delay between attempts in seconds (default: 1.0)
+- `verbose::Bool`: Enable verbose logging (default: false)
+
+# Returns
+- `Bool`: true if Chrome is responding on the debug port, false otherwise
 """
 function ensure_chrome_running(;
         endpoint = "http://localhost:9222", max_attempts = 5, delay = 1.0, verbose::Bool = false)
@@ -120,10 +127,19 @@ function ensure_chrome_running(;
 end
 
 """
-    get_ws_id(; endpoint = "http://localhost:9222", verbose::Bool=false)
+    get_ws_id(; endpoint = "http://localhost:9222", verbose::Bool=false) -> String
 
 Gets the WebSocket debugger ID from Chrome's debug interface.
-Returns the ID string that can be used to construct the WebSocket URL.
+
+# Arguments
+- `endpoint::String`: Chrome DevTools Protocol endpoint URL (default: "http://localhost:9222")
+- `verbose::Bool`: Enable verbose logging (default: false)
+
+# Returns
+- `String`: WebSocket debugger ID that can be used to construct the WebSocket URL
+
+# Throws
+- `ConnectionError`: If unable to connect to Chrome or retrieve debugger ID
 """
 function get_ws_id(; endpoint = "http://localhost:9222", verbose::Bool = false)
     verbose && @debug "Requesting WebSocket debugger ID"

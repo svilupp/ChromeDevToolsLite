@@ -36,7 +36,8 @@ const CONNECTION_TIMEOUT = 5.0
 # Import Base operations
 import Base: close, show
 
-# Export utility functions
+# Export error types and utility functions
+export ElementNotFoundError, NavigationError, EvaluationError, TimeoutError, ConnectionError
 export extract_cdp_result, extract_element_result
 include("utils.jl")
 

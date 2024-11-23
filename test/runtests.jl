@@ -43,6 +43,10 @@ include("test_utils.jl")
         @testset "Element Interactions" begin
             include("element_test.jl")
         end
+
+        @testset "Page Operations" begin
+            include("page_test.jl")
+        end
     finally
         cleanup()
     end

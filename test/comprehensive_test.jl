@@ -7,6 +7,81 @@ include("test_utils.jl")
 @testset "ChromeDevToolsLite Comprehensive Tests" begin
     client = setup_test()
 
+    @testset "Page Operations" begin
+        # Test page navigation and content retrieval
+        local_path = joinpath(@__DIR__, "test_pages", "error_cases.html")
+        url = "file://" * local_path
+        invalid_url = "file:///nonexistent.html"
+
+        # Test goto with verbose logging and error cases
+        @test goto(client, url; verbose=true) === nothing
+        @test_throws Exception goto(client, invalid_url; verbose=true)
+
+        # Test content retrieval
+        html_content = content(client; verbose=true)
+        @test html_content isa String
+        @test contains(html_content, "<title>Error Cases Test</title>")
+        @test contains(html_content, "<div id=\"content\">Error Test Content</div>")
+
+        # Test JavaScript evaluation with different error scenarios
+        @test evaluate(client, "throwError()"; verbose=true) === nothing
+        @test evaluate(client, "returnUndefined()"; verbose=true) === nothing
+        @test evaluate(client, "returnNull()"; verbose=true) === nothing
+        @test evaluate(client, "causeReferenceError()"; verbose=true) === nothing
+        @test evaluate(client, "causeSyntaxError()"; verbose=true) === nothing
+        @test evaluate(client, "invalid.syntax.error"; verbose=true) === nothing
+
+        # Test page modification and state
+        @test evaluate(client, "modifyPage()"; verbose=true) == true
+        modified_content = content(client; verbose=true)
+        @test contains(modified_content, "<div>Modified Content</div>")
+
+        # Test screenshot functionality with various states
+        screenshot_data = screenshot(client; verbose=true)
+        @test screenshot_data isa String
+        @test !isempty(screenshot_data)
+        @test startswith(screenshot_data, "iVBOR") # PNG base64 header
+
+        # Test screenshot with page modifications
+        @test evaluate(client, "document.body.style.background = 'red'"; verbose=true) !== nothing
+        modified_screenshot = screenshot(client; verbose=true)
+        @test modified_screenshot isa String
+        @test modified_screenshot != screenshot_data
+
+        # Test content after disconnection simulation
+        @test evaluate(client, "window.close()"; verbose=true) === nothing
+        @test content(client; verbose=true) isa String  # Should still return content or handle gracefully
+    end
+
+    @testset "Form Interactions" begin
+        # Test form.html
+        local_path = joinpath(@__DIR__, "test_pages", "form.html")
+        url = "file://" * local_path
+        goto(client, url)
+
+        # Test input field with ElementHandle
+        input = ElementHandle(client, "#name-input")
+        @test type_text(input, "Test User")
+        @test evaluate_handle(input, "el => el.value") == "Test User"
+
+        # Test checkbox with ElementHandle
+        checkbox = ElementHandle(client, "#agree-checkbox")
+        @test check(checkbox)
+        @test evaluate_handle(checkbox, "el => el.checked") == true
+        @test uncheck(checkbox)
+        @test evaluate_handle(checkbox, "el => el.checked") == false
+    end
+
+        # Test screenshot functionality
+        screenshot_data = screenshot(client; verbose=true)
+        @test screenshot_data isa String
+        @test !isempty(screenshot_data)
+        @test startswith(screenshot_data, "iVBOR") # PNG base64 header
+
+        # Test screenshot with invalid state
+        @test screenshot(client; verbose=true) !== nothing  # Should still work even after previous operations
+    end
+
     @testset "Form Interactions" begin
         # Test form.html
         local_path = joinpath(@__DIR__, "test_pages", "form.html")
@@ -180,51 +255,40 @@ include("test_utils.jl")
         @test is_visible(result)
     end
 
-    teardown_test(client)
-end
-
-        @test click(submit)  # Should not submit with empty required field
-        @test evaluate_handle(input, "el => el.validity.valid") == false
-
-        @test type_text(input, "valid input")
-        @test click(submit)
-        @test evaluate_handle(input, "el => el.validity.valid") == true
-    end
-
-    @testset "Dynamic Content and Visibility" begin
-        local_path = joinpath(@__DIR__, "test_pages", "dynamic_content.html")
+    @testset "Navigation Operations" begin
+        # Test navigation.html
+        local_path = joinpath(@__DIR__, "test_pages", "navigation.html")
         url = "file://" * local_path
-        goto(client, url)
+        @test goto(client, url) === nothing
 
-        # Test delayed content visibility
-        delayed = ElementHandle(client, "#delayed-content")
-        @test !is_visible(delayed)
+        # Test navigation state
+        nav_state = evaluate(client, "getNavigationState()")
+        @test nav_state isa Dict
+        @test haskey(nav_state, "href")
+        @test haskey(nav_state, "pathname")
 
-        show_button = ElementHandle(client, "#show-delayed")
-        @test click(show_button)
+        # Test navigation through button click
+        button = ElementHandle(client, "#redirect-button")
+        @test click(button)
+        sleep(0.5)  # Wait for navigation
 
-        # Wait for animation
-        sleep(1.5)  # Give extra time for the delay
-        @test is_visible(delayed)
+        # Verify navigation occurred
+        new_content = content(client)
+        @test contains(new_content, "<title>Page Operations Test</title>")
 
-        # Test dynamic content updates
-        dynamic = ElementHandle(client, "#dynamic-content")
-        initial_content = get_text(dynamic)
+        # Test navigation error handling
+        @test evaluate(client, "triggerNavigationError()") == true
+        sleep(0.5)  # Wait for attempted navigation
 
-        update_button = ElementHandle(client, "#update-button")
-        @test click(update_button)
-        @test get_text(dynamic) != initial_content
+        # Verify we're still on a valid page
+        @test !isempty(content(client))
     end
 
     teardown_test(client)
 end
 
-        @test click(submit)  # Should not submit with empty required field
-        @test evaluate_handle(input, "el => el.validity.valid") == false
-
-        @test type_text(input, "valid input")
         @test click(submit)
-        @test evaluate_handle(input, "el => el.validity.valid") == true
+        @test is_visible(result)
     end
 
     teardown_test(client)

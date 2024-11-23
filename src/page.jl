@@ -64,3 +64,39 @@ Get the HTML content of the page.
 function content(client::WSClient; verbose::Bool=false)
     evaluate(client, "document.documentElement.outerHTML"; verbose=verbose)
 end
+
+"""
+    evaluate_handle(client::WSClient, expression::String; verbose::Bool=false) -> Any
+
+Evaluate JavaScript in the page context and return a handle to the result.
+Useful for evaluating expressions that return DOM elements or complex objects.
+
+# Arguments
+- `client::WSClient`: The WebSocket client to use
+- `expression::String`: JavaScript expression to evaluate
+- `verbose::Bool`: Enable verbose logging (default: false)
+
+# Returns
+- `Any`: A handle to the evaluated result, typically a Dict containing object reference
+
+# Throws
+- `EvaluationError`: If JavaScript evaluation fails
+"""
+function evaluate_handle(client::WSClient, expression::String; verbose::Bool=false)
+    verbose && @debug "Evaluating JavaScript for handle" expression=expression
+    response = send_cdp_message(
+        client, "Runtime.evaluate",
+        Dict{String,Any}(
+            "expression" => expression,
+            "returnByValue" => false
+        )
+    )
+
+    if haskey(response, "result") && haskey(response["result"], "result")
+        verbose && @debug "Handle evaluation successful"
+        return response["result"]["result"]
+    end
+
+    verbose && @warn "Handle evaluation returned no result"
+    return nothing
+end

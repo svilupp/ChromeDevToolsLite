@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Error Cases Test</title>
+</head>
+<body>
+    <h1>Error Cases Test Page</h1>
+    <div id="content">Error Test Content</div>
+    <script>
+        // Function to test various error scenarios
+        function throwError() {
+            throw new Error('Intentional test error');
+        }
+
+        function returnUndefined() {
+            return undefined;
+        }
+
+        function returnNull() {
+            return null;
+        }
+
+        function causeReferenceError() {
+            return nonexistentVariable;
+        }
+
+        function causeSyntaxError() {
+            eval('this is not valid javascript');
+        }
+
+        // Function to modify page state
+        function modifyPage() {
+            document.body.innerHTML = '<div>Modified Content</div>';
+            return true;
+        }
+    </script>
+</body>
+</html>

@@ -110,14 +110,17 @@ end
     connect!(client::WSClient) -> WSClient
 
 Connect to Chrome DevTools Protocol WebSocket endpoint.
-Returns the connected client.
-"""
+Establishes a WebSocket connection and starts the message handler.
 
-"""
-    connect!(client::WSClient) -> WSClient
+# Arguments
+- `client::WSClient`: The WebSocket client to connect
 
-Connect to Chrome DevTools Protocol WebSocket endpoint.
-Returns the connected client.
+# Returns
+- `WSClient`: The connected client instance
+
+# Throws
+- `TimeoutError`: If connection times out
+- `ConnectionError`: If connection fails after max retries
 """
 function connect!(client::WSClient)
     if client.is_connected
@@ -133,7 +136,20 @@ end
 """
     send_cdp_message(client::WSClient, method::String, params::Dict=Dict(); increment_id::Bool=true) -> Dict
 
-Send a CDP message and wait for the response. Includes automatic reconnection on failure.
+Send a Chrome DevTools Protocol message and wait for the response.
+
+# Arguments
+- `client::WSClient`: The WebSocket client to use
+- `method::String`: The CDP method to call (e.g., "Page.navigate")
+- `params::Dict`: Parameters for the CDP method (default: empty Dict)
+- `increment_id::Bool`: Whether to increment the message ID counter (default: true)
+
+# Returns
+- `Dict`: The CDP response message
+
+# Throws
+- `TimeoutError`: If response times out
+- `ConnectionError`: If connection is lost during message exchange
 """
 function send_cdp_message(
         client::WSClient, method::String, params::Dict = Dict(); increment_id::Bool = true)
@@ -194,9 +210,12 @@ function send_cdp_message(
 end
 
 """
-    close(client::WSClient)
+    Base.close(client::WSClient)
 
-Close the WebSocket connection.
+Close the WebSocket connection and clean up resources.
+
+# Arguments
+- `client::WSClient`: The WebSocket client to close
 """
 function close(client::WSClient)
     if client.is_connected && !isnothing(client.ws)
