@@ -13,7 +13,7 @@ using ChromeDevToolsLite
             @test goto(client, test_url) === nothing
 
             # Test invalid navigation
-            @test_throws Exception goto(client, "file:///nonexistent.html")
+            @test_throws NavigationError goto(client, "file:///nonexistent.html")
 
             # Test content retrieval
             content_result = content(client)
