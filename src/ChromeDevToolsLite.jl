@@ -1,3 +1,26 @@
+"""
+    ChromeDevToolsLite
+
+A lightweight Julia implementation of Chrome DevTools Protocol client.
+
+# Features
+- Browser automation and control
+- Element interaction and manipulation
+- Page navigation and evaluation
+- Screenshot capture
+
+# Configuration
+All functions accept a `verbose` flag to control logging output:
+- `verbose=true`: Enables detailed logging with @info and @debug messages
+- `verbose=false` (default): Suppresses informational logging
+
+Example:
+```julia
+client = connect_browser(verbose=true)
+element = ElementHandle(client, "#my-button", verbose=true)
+click(element)
+```
+"""
 module ChromeDevToolsLite
 
 using HTTP

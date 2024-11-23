@@ -6,6 +6,8 @@ Represents a handle to a DOM element in the browser.
 struct ElementHandle
     client::WSClient
     selector::String
+    verbose::Bool
+    ElementHandle(client::WSClient, selector::String; verbose::Bool=false) = new(client, selector, verbose)
 end
 
 """
@@ -14,7 +16,7 @@ end
 Click an element.
 """
 function click(element::ElementHandle; options = Dict())
-    @debug "Attempting to click element" selector=element.selector
+    element.verbose && @debug "Attempting to click element" selector=element.selector
     result = send_cdp_message(element.client,
         "Runtime.evaluate",
         Dict{String, Any}(
@@ -37,7 +39,7 @@ function click(element::ElementHandle; options = Dict())
             "returnByValue" => true
         ))
     success = extract_element_result(result)
-    @info "Click operation result" selector=element.selector success=success
+    element.verbose && @info "Click operation result" selector=element.selector success=success
     return success
 end
 
@@ -47,7 +49,7 @@ end
 Type text into an element.
 """
 function type_text(element::ElementHandle, text::String; options = Dict())
-    @debug "Attempting to type text" selector=element.selector text=text
+    element.verbose && @debug "Attempting to type text" selector=element.selector text=text
     result = send_cdp_message(element.client,
         "Runtime.evaluate",
         Dict(
@@ -73,7 +75,7 @@ function type_text(element::ElementHandle, text::String; options = Dict())
             "returnByValue" => true
         ))
     success = extract_element_result(result)
-    @info "Type text operation result" selector=element.selector success=success
+    element.verbose && @info "Type text operation result" selector=element.selector success=success
     return success
 end
 
@@ -83,7 +85,7 @@ end
 Check a checkbox or radio button element.
 """
 function check(element::ElementHandle; options = Dict())
-    @debug "Attempting to check element" selector=element.selector
+    element.verbose && @debug "Attempting to check element" selector=element.selector
     result = send_cdp_message(element.client,
         "Runtime.evaluate",
         Dict(
@@ -107,7 +109,7 @@ function check(element::ElementHandle; options = Dict())
         ))
     response = extract_element_result(result)
     success = get(response, "success", false)
-    @info "Check operation result" selector=element.selector success=success
+    element.verbose && @info "Check operation result" selector=element.selector success=success
     return success
 end
 
@@ -117,7 +119,7 @@ end
 Uncheck a checkbox element.
 """
 function uncheck(element::ElementHandle; options = Dict())
-    @debug "Attempting to uncheck element" selector=element.selector
+    element.verbose && @debug "Attempting to uncheck element" selector=element.selector
     result = send_cdp_message(element.client,
         "Runtime.evaluate",
         Dict{String, Any}(
@@ -141,7 +143,7 @@ function uncheck(element::ElementHandle; options = Dict())
         ))
     response = extract_element_result(result)
     success = get(response, "success", false)
-    @info "Uncheck operation result" selector=element.selector success=success
+    element.verbose && @info "Uncheck operation result" selector=element.selector success=success
     return success
 end
 
@@ -151,7 +153,7 @@ end
 Select an option in a select element by value.
 """
 function select_option(element::ElementHandle, value::String; options = Dict())
-    @debug "Attempting to select option" selector=element.selector value=value
+    element.verbose && @debug "Attempting to select option" selector=element.selector value=value
     result = send_cdp_message(element.client,
         "Runtime.evaluate",
         Dict{String, Any}(
@@ -170,7 +172,7 @@ function select_option(element::ElementHandle, value::String; options = Dict())
             "returnByValue" => true
         ))
     success = extract_element_result(result)
-    @info "Select option result" selector=element.selector value=value success=success
+    element.verbose && @info "Select option result" selector=element.selector value=value success=success
     return success
 end
 
@@ -180,7 +182,7 @@ end
 Check if an element is visible.
 """
 function is_visible(element::ElementHandle)
-    @debug "Checking element visibility" selector=element.selector
+    element.verbose && @debug "Checking element visibility" selector=element.selector
     result = send_cdp_message(element.client,
         "Runtime.evaluate",
         Dict{String, Any}(
@@ -205,7 +207,7 @@ function is_visible(element::ElementHandle)
             "returnByValue" => true
         ))
     visible = extract_element_result(result)
-    @info "Visibility check result" selector=element.selector visible=visible
+    element.verbose && @info "Visibility check result" selector=element.selector visible=visible
     return visible
 end
 
@@ -215,7 +217,7 @@ end
 Get the text content of an element.
 """
 function get_text(element::ElementHandle)
-    @debug "Getting element text" selector=element.selector
+    element.verbose && @debug "Getting element text" selector=element.selector
     result = send_cdp_message(element.client,
         "Runtime.evaluate",
         Dict{String, Any}(
@@ -234,7 +236,7 @@ function get_text(element::ElementHandle)
 
     response = extract_cdp_result(result, ["result", "result"])
     text = get(response, "value", "")
-    @info "Get text result" selector=element.selector text=text
+    element.verbose && @info "Get text result" selector=element.selector text=text
     return text
 end
 
@@ -244,7 +246,7 @@ end
 Get the value of an attribute on an element.
 """
 function get_attribute(element::ElementHandle, name::String)
-    @debug "Getting element attribute" selector=element.selector attribute=name
+    element.verbose && @debug "Getting element attribute" selector=element.selector attribute=name
     result = send_cdp_message(element.client,
         "Runtime.evaluate",
         Dict(
@@ -272,7 +274,7 @@ function get_attribute(element::ElementHandle, name::String)
         return nothing
     end
 
-    @info "Get attribute result" selector=element.selector attribute=name value=value
+    element.verbose && @info "Get attribute result" selector=element.selector attribute=name value=value
     return string(value)
 end
 
@@ -282,7 +284,7 @@ end
 Evaluate JavaScript expression in the context of the element.
 """
 function evaluate_handle(element::ElementHandle, expression::String)
-    @debug "Evaluating expression on element" selector=element.selector expression=expression
+    element.verbose && @debug "Evaluating expression on element" selector=element.selector expression=expression
     result = send_cdp_message(element.client,
         "Runtime.evaluate",
         Dict{String, Any}(
