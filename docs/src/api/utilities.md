@@ -36,12 +36,13 @@ end
 try
     client = connect_browser()
     if client === nothing
-        error("Failed to create browser connection")
+        @error "Failed to create browser connection"
+        return nothing
     end
 
     # Your browser operations here
 catch e
-    println("Browser connection failed, retrying...")
+    @warn "Browser connection failed" exception=e
     # Implement retry logic here
 finally
     client !== nothing && close(client)
