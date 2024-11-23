@@ -33,66 +33,68 @@ using HTTP
     """
 
     # Inject content and verify injection
-    result = send_cdp_message(client, "Runtime.evaluate", Dict{String, Any}(
-        "expression" => """
-            document.documentElement.innerHTML = `$(html_content)`;
-            console.log('Page content set:', {
-                html: document.documentElement.innerHTML,
-                bodyChildCount: document.body.childNodes.length,
-                elements: {
-                    clickme: !!document.querySelector('#clickme'),
-                    textinput: !!document.querySelector('#textinput'),
-                    checkbox: !!document.querySelector('#checkbox'),
-                    dropdown: !!document.querySelector('#dropdown'),
-                    visible: !!document.querySelector('#visible'),
-                    hidden: !!document.querySelector('#hidden'),
-                    withattr: !!document.querySelector('#withattr')
-                }
-            });
-            true
-        """,
-        "returnByValue" => true
-    ))
-    @test get(get(result, "result", Dict()), "value", false) === true
+    result = send_cdp_message(client,
+        "Runtime.evaluate",
+        Dict{String, Any}(
+            "expression" => """
+                document.documentElement.innerHTML = `$(html_content)`;
+                console.log('Page content set:', {
+                    html: document.documentElement.innerHTML,
+                    bodyChildCount: document.body.childNodes.length,
+                    elements: {
+                        clickme: !!document.querySelector('#clickme'),
+                        textinput: !!document.querySelector('#textinput'),
+                        checkbox: !!document.querySelector('#checkbox'),
+                        dropdown: !!document.querySelector('#dropdown'),
+                        visible: !!document.querySelector('#visible'),
+                        hidden: !!document.querySelector('#hidden'),
+                        withattr: !!document.querySelector('#withattr')
+                    }
+                });
+                true
+            """,
+            "returnByValue" => true
+        ))
+    @test get(get(get(result, "result", Dict()), "result", Dict()), "value", false) === true
 
     # Add a longer wait for DOM to be ready
     sleep(2)
 
-    # Wait for a moment to ensure DOM is ready
-    sleep(0.5)
-
     # Verify each element exists and log their properties
-    result = send_cdp_message(client, "Runtime.evaluate", Dict{String, Any}(
-        "expression" => """
-            (function() {
-                const elements = {
-                    button: document.querySelector('#clickme'),
-                    input: document.querySelector('#textinput'),
-                    checkbox: document.querySelector('#checkbox'),
-                    dropdown: document.querySelector('#dropdown'),
-                    visible: document.querySelector('#visible'),
-                    hidden: document.querySelector('#hidden'),
-                    withattr: document.querySelector('#withattr')
-                };
+    result = send_cdp_message(client,
+        "Runtime.evaluate",
+        Dict{String, Any}(
+            "expression" => """
+                (function() {
+                    const elements = {
+                        button: document.querySelector('#clickme'),
+                        input: document.querySelector('#textinput'),
+                        checkbox: document.querySelector('#checkbox'),
+                        dropdown: document.querySelector('#dropdown'),
+                        visible: document.querySelector('#visible'),
+                        hidden: document.querySelector('#hidden'),
+                        withattr: document.querySelector('#withattr')
+                    };
 
-                const status = Object.entries(elements).reduce((acc, [key, el]) => {
-                    acc[key] = el ? {
-                        exists: true,
-                        tagName: el.tagName,
-                        isConnected: el.isConnected,
-                        innerHTML: el.innerHTML
-                    } : { exists: false };
-                    return acc;
-                }, {});
+                    const status = Object.entries(elements).reduce((acc, [key, el]) => {
+                        acc[key] = el ? {
+                            exists: true,
+                            tagName: el.tagName,
+                            isConnected: el.isConnected,
+                            innerHTML: el.innerHTML
+                        } : { exists: false };
+                        return acc;
+                    }, {});
 
-                console.log('Element status:', JSON.stringify(status, null, 2));
-                return status;
-            })()
-        """,
-        "returnByValue" => true
-    ))
+                    console.log('Element status:', JSON.stringify(status, null, 2));
+                    return status;
+                })()
+            """,
+            "returnByValue" => true
+        ))
 
-    element_status = get(get(result, "result", Dict()), "value", Dict())
+    element_status = get(
+        get(get(result, "result", Dict()), "result", Dict()), "value", Dict())
     @info "Element status check" element_status
 
     # Verify all elements exist
@@ -104,15 +106,18 @@ using HTTP
     sleep(1)
 
     # Double check DOM is ready and elements are accessible
-    ready_check = send_cdp_message(client, "Runtime.evaluate", Dict{String, Any}(
-        "expression" => """
-            document.readyState === 'complete' &&
-            document.querySelector('#clickme') !== null &&
-            document.querySelector('#textinput') !== null
-        """,
-        "returnByValue" => true
-    ))
-    @test get(get(ready_check, "result", Dict()), "value", false) === true
+    ready_check = send_cdp_message(client,
+        "Runtime.evaluate",
+        Dict{String, Any}(
+            "expression" => """
+                document.readyState === 'complete' &&
+                document.querySelector('#clickme') !== null &&
+                document.querySelector('#textinput') !== null
+            """,
+            "returnByValue" => true
+        ))
+    @test get(get(get(ready_check, "result", Dict()), "result", Dict()), "value", false) ===
+          true
 
     # Create element handles directly using selectors
     button = ElementHandle(client, "#clickme")
