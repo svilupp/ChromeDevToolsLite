@@ -1,13 +1,11 @@
 [deps]
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
-Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 HTTP = "cd3eb016-35fb-5094-929b-558a96fad6f3"
 Logging = "56ddb016-857b-54e1-b83d-db4d58db5568"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [compat]
 Aqua = "0.8"
-Documenter = "1"
 HTTP = "1.10"
 Logging = "1"
 Test = "1"
