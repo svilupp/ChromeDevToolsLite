@@ -7,7 +7,7 @@
 1. **WebSocket Connection Errors**
 ```julia
 try
-    client = connect_browser()
+    client = connect_browser(verbose=true)
 catch e
     if e isa HTTP.WebSockets.WebSocketError
         @error "Failed to establish WebSocket connection" exception=e
@@ -34,11 +34,12 @@ type_text(element, "test")
 
 ### CDP Message Errors
 
-1. **CDP Command Results**
 ```julia
+# Use verbose flag for detailed error information
 result = send_cdp_message(client, "Runtime.evaluate",
     Dict("expression" => "document.title",
-         "returnByValue" => true))
+         "returnByValue" => true),
+    verbose=true)
 
 if haskey(result, "error")
     @error "CDP command failed" error=result["error"]
@@ -59,32 +60,33 @@ end
 ```
 
 ### 2. Connection Management
-Use the built-in connection management:
 ```julia
-client = connect_browser()
+# Enable verbose mode during development
+client = connect_browser(verbose=true)
 ```
 
 ### 3. Element State Verification
 Always check element state before interaction:
 ```julia
-element = ElementHandle(client, "#button")
+element = ElementHandle(client, "#button", verbose=true)
 if is_visible(element)
-    click(element)
+    click(element, verbose=true)
 else
     @warn "Element not ready for interaction"
 end
 ```
 
-### 4. Logging Levels
-Use appropriate logging levels for different scenarios:
+### 4. Debugging Options
+
+Two ways to enable detailed logging:
 ```julia
+# 1. Using verbose flag (recommended)
+client = connect_browser(verbose=true)
+element = ElementHandle(client, "#button", verbose=true)
+
+# 2. Using Julia's logging system
 using Logging
-
-# For development/debugging
 global_logger(ConsoleLogger(stderr, Logging.Debug))
-
-# For production
-global_logger(ConsoleLogger(stderr, Logging.Info))
 ```
 
 ## Common Solutions
@@ -116,7 +118,7 @@ type_text(element, "new text")
 
 ## Debugging Tips
 
-1. Enable debug logging to see detailed operation information
+1. Use verbose=true flag for detailed operation information
 2. Check browser console for JavaScript errors
 3. Verify selectors using browser developer tools
 4. Use `evaluate_handle` for complex debugging scenarios
