@@ -1,4 +1,9 @@
-# ChromeDevToolsLite [![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://svilupp.github.io/ChromeDevToolsLite.jl/stable/) [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://svilupp.github.io/ChromeDevToolsLite.jl/dev/) [![Build Status](https://github.com/svilupp/ChromeDevToolsLite.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/svilupp/ChromeDevToolsLite.jl/actions/workflows/CI.yml?query=branch%3Amain) [![Coverage](https://codecov.io/gh/svilupp/ChromeDevToolsLite.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/svilupp/ChromeDevToolsLite.jl) [![Aqua](https://raw.githubusercontent.com/JuliaTesting/Aqua.jl/master/badge.svg)](https://github.com/JuliaTesting/Aqua.jl)
+# ChromeDevToolsLite 
+[![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://svilupp.github.io/ChromeDevToolsLite.jl/stable/) 
+[![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://svilupp.github.io/ChromeDevToolsLite.jl/dev/)
+[![Build Status](https://github.com/svilupp/ChromeDevToolsLite.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/svilupp/ChromeDevToolsLite.jl/actions/workflows/CI.yml?query=branch%3Amain) 
+[![Coverage](https://codecov.io/gh/svilupp/ChromeDevToolsLite.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/svilupp/ChromeDevToolsLite.jl) 
+[![Aqua](https://raw.githubusercontent.com/JuliaTesting/Aqua.jl/master/badge.svg)](https://github.com/JuliaTesting/Aqua.jl)
 
 A lightweight Julia package for browser automation using the Chrome DevTools Protocol (CDP).
 
@@ -22,17 +27,6 @@ A lightweight Julia package for browser automation using the Chrome DevTools Pro
   - Click and type operations
   - Element visibility checking
 
-- **Error Handling**
-  - Timeout management
-  - Navigation error recovery
-  - Element not found handling
-  - Evaluation error handling
-
-- **Resource Management**
-  - Automatic cleanup
-  - Context isolation
-  - Memory optimization
-
 ## Installation
 
 ```julia
@@ -42,9 +36,7 @@ Pkg.add("ChromeDevToolsLite")
 
 ## Prerequisites
 
-- Chrome/Chromium browser
-  - On Linux: Will be automatically installed during tests
-  - On other systems: Must be installed manually and started in debug mode
+- Chrome/Chromium browser started with remote debugging enabled (`--remote-debugging-port=9222`)
 - Julia 1.10 or higher
 
 ## Quick Start

@@ -45,7 +45,7 @@
         const result = document.getElementById('form-result');
 
         username.addEventListener('input', function() {
-            if (this.validity.valid) {
+            if (this.value.length >= 3 && this.value.length <= 20) {
                 usernameError.style.display = 'none';
             } else {
                 usernameError.style.display = 'block';

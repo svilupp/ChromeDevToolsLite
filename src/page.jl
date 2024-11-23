@@ -54,7 +54,7 @@ Wait for a specific CDP event to occur.
 # Notes
 - Used internally for synchronizing page operations
 """
-function wait_for_event(client::WSClient, event_name::String; timeout::Float64=5.0)
+function wait_for_event(client::WSClient, event_name::String; timeout::Float64 = 5.0)
     start_time = time()
     while time() - start_time < timeout
         msg = try
@@ -155,11 +155,11 @@ Useful for evaluating expressions that return DOM elements or complex objects.
 # Throws
 - `EvaluationError`: If JavaScript evaluation fails
 """
-function evaluate_handle(client::WSClient, expression::String; verbose::Bool=false)
+function evaluate_handle(client::WSClient, expression::String; verbose::Bool = false)
     verbose && @debug "Evaluating JavaScript for handle" expression=expression
     response = send_cdp_message(
         client, "Runtime.evaluate",
-        Dict{String,Any}(
+        Dict{String, Any}(
             "expression" => expression,
             "returnByValue" => false
         )

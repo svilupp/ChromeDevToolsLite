@@ -41,6 +41,7 @@ include("utils.jl")
 
 # Include types first
 export WSClient, ElementHandle
+export ElementNotFoundError, NavigationError, EvaluationError, TimeoutError, ConnectionError
 include("types.jl")
 
 # Include core functionality

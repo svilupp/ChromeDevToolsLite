@@ -37,3 +37,58 @@ struct ElementHandle
         new(client, selector, verbose)
     end
 end
+
+"""
+    ElementNotFoundError
+
+Thrown when an element cannot be found in the DOM using the specified selector.
+"""
+struct ElementNotFoundError <: Exception
+    selector::String
+    message::String
+    ElementNotFoundError(selector::String) = new(selector, "Element not found: $selector")
+end
+
+"""
+    NavigationError
+
+Thrown when a page navigation fails or times out.
+"""
+struct NavigationError <: Exception
+    url::String
+    message::String
+    NavigationError(url::String, msg::String = "Navigation failed") = new(url, "$msg: $url")
+end
+
+"""
+    EvaluationError
+
+Thrown when JavaScript evaluation in the browser fails.
+"""
+struct EvaluationError <: Exception
+    script::String
+    message::String
+    function EvaluationError(script::String, msg::String = "Evaluation failed")
+        new(script, "$msg\nScript: $script")
+    end
+end
+
+"""
+    TimeoutError
+
+Thrown when an operation exceeds its time limit.
+"""
+struct TimeoutError <: Exception
+    message::String
+    TimeoutError(msg::String = "Operation timed out") = new(msg)
+end
+
+"""
+    ConnectionError
+
+Thrown when there are issues with the WebSocket connection.
+"""
+struct ConnectionError <: Exception
+    message::String
+    ConnectionError(msg::String = "Connection failed") = new(msg)
+end

@@ -134,7 +134,6 @@ function uncheck(element::ElementHandle; options = Dict())
         ))
     response = extract_element_result(result)
     success = get(response, "success", false)
-    @info "Uncheck operation result" result=result response=response
     element.verbose &&
         @info "Uncheck operation result" selector=element.selector success=success
     return success
@@ -178,12 +177,13 @@ Check if an element is visible.
 """
 function is_visible(element::ElementHandle)
     element.verbose && @debug "Checking element visibility" selector=element.selector
+    safe_selector = replace(element.selector, "'" => "\\'")
     result = send_cdp_message(element.client,
         "Runtime.evaluate",
         Dict{String, Any}(
             "expression" => """
                 (function() {
-                    const el = document.querySelector('$(element.selector)');
+                    const el = document.querySelector('$(safe_selector)');
                     if (!el || !el.isConnected) {
                         console.error('Element not found or not connected to DOM');
                         return false;
@@ -280,6 +280,7 @@ end
     evaluate_handle(element::ElementHandle, expression::String) -> Any
 
 Evaluate JavaScript expression in the context of the element.
+Assumed the element is variable `el`.
 """
 function evaluate_handle(element::ElementHandle, expression::String)
     element.verbose &&
@@ -311,7 +312,6 @@ function evaluate_handle(element::ElementHandle, expression::String)
         ))
 
     response = extract_cdp_result(result, ["result", "result"])
-    @info "Evaluate handle result" result=result response=response
     if response === nothing || !get(response, "success", false)
         return nothing
     end
