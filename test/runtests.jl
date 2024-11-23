@@ -37,9 +37,9 @@ end
         end
 
         # Test Chrome setup
-        @test setup_success "Chrome setup failed after 3 attempts"
-
-        if setup_success
+        if !setup_success
+            @test_logs (:error, "Chrome setup failed after 3 attempts") @test false
+        else
             @testset "Basic Functionality" begin
                 include("basic_test.jl")
             end
