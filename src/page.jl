@@ -38,6 +38,39 @@ function goto(client::WSClient, url::String; verbose::Bool=false)
 end
 
 """
+    wait_for_event(client::WSClient, event_name::String; timeout::Float64=5.0) -> Union{Dict, Nothing}
+
+Wait for a specific CDP event to occur.
+
+# Arguments
+- `client::WSClient`: The WebSocket client to use
+- `event_name::String`: Name of the event to wait for
+- `timeout::Float64`: Maximum time to wait in seconds (default: 5.0)
+
+# Returns
+- `Dict`: The event data if received
+- `Nothing`: If timeout occurs or error happens
+
+# Notes
+- Used internally for synchronizing page operations
+"""
+function wait_for_event(client::WSClient, event_name::String; timeout::Float64=5.0)
+    start_time = time()
+    while time() - start_time < timeout
+        msg = try
+            take!(client.message_channel)
+        catch e
+            return nothing
+        end
+
+        if haskey(msg, "method") && msg["method"] == event_name
+            return msg
+        end
+    end
+    return nothing
+end
+
+"""
     evaluate(client::WSClient, expression::String; verbose::Bool=false) -> Any
 
 Evaluate JavaScript in the page context and return the result.
