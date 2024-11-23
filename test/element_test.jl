@@ -1,191 +1,193 @@
 using Test
 using ChromeDevToolsLite
 using HTTP
+using Logging
+
+"""
+    wait_for_dom_ready(client::WSClient, timeout::Float64=5.0)
+
+Wait for DOM to be ready with timeout.
+"""
+function wait_for_dom_ready(client::WSClient, timeout::Float64=5.0)
+    start_time = time()
+    while (time() - start_time) < timeout
+        result = send_cdp_message(client,
+            "Runtime.evaluate",
+            Dict{String, Any}(
+                "expression" => "document.readyState === 'complete'",
+                "returnByValue" => true
+            ))
+        if get(get(get(result, "result", Dict()), "result", Dict()), "value", false)
+            return true
+        end
+        sleep(0.5)
+    end
+    return false
+end
+
+# Helper function for element checks
+function verify_element_exists(client, selector)
+    @debug "Verifying element existence" selector
+    result = send_cdp_message(client,
+        "Runtime.evaluate",
+        Dict{String, Any}(
+            "expression" => "!!document.querySelector('$(selector)')",
+            "returnByValue" => true
+        ))
+    exists = get(get(get(result, "result", Dict()), "result", Dict()), "value", false)
+    @debug "Element existence check result" selector exists
+    exists
+end
 
 @testset "Element Interactions" begin
-    client = connect_browser()
+    client = nothing
+    try
+        @info "Starting element interaction tests"
+        client = connect_browser()
 
-    # Enable required domains
-    send_cdp_message(client, "DOM.enable", Dict{String, Any}())
-    send_cdp_message(client, "Page.enable", Dict{String, Any}())
-    send_cdp_message(client, "Runtime.enable", Dict{String, Any}())
+        # Enable required domains
+        send_cdp_message(client, "DOM.enable", Dict{String, Any}())
+        send_cdp_message(client, "Page.enable", Dict{String, Any}())
+        send_cdp_message(client, "Runtime.enable", Dict{String, Any}())
 
-    # Initialize blank page
-    send_cdp_message(client, "Page.navigate", Dict{String, Any}("url" => "about:blank"))
+        # Initialize blank page with verification
+        @info "Navigating to blank page"
+        send_cdp_message(client, "Page.navigate", Dict{String, Any}("url" => "about:blank"))
+        @test wait_for_dom_ready(client)
 
-    # Create test page content with debug logging
-    html_content = """
-    <!DOCTYPE html>
-    <html>
-    <body>
-        <button id="clickme">Click Me</button>
-        <input id="textinput" type="text" />
-        <input id="checkbox" type="checkbox" />
-        <select id="dropdown">
-            <option value="1">Option 1</option>
-            <option value="2">Option 2</option>
-        </select>
-        <div id="visible">Visible Text</div>
-        <div id="hidden" style="display: none;">Hidden Text</div>
-        <div id="withattr" data-test="testvalue">Element with attribute</div>
-    </body>
-    </html>
-    """
+        # Create test page content with debug logging
+        html_content = """
+        <!DOCTYPE html>
+        <html>
+        <body>
+            <button id="clickme">Click Me</button>
+            <input id="textinput" type="text" />
+            <input id="checkbox" type="checkbox" />
+            <select id="dropdown">
+                <option value="1">Option 1</option>
+                <option value="2">Option 2</option>
+            </select>
+            <div id="visible">Visible Text</div>
+            <div id="hidden" style="display: none;">Hidden Text</div>
+            <div id="withattr" data-test="testvalue">Element with attribute</div>
+        </body>
+        </html>
+        """
 
-    # Inject content and verify injection
-    result = send_cdp_message(client,
-        "Runtime.evaluate",
-        Dict{String, Any}(
-            "expression" => """
-                document.documentElement.innerHTML = `$(html_content)`;
-                console.log('Page content set:', {
-                    html: document.documentElement.innerHTML,
-                    bodyChildCount: document.body.childNodes.length,
-                    elements: {
-                        clickme: !!document.querySelector('#clickme'),
-                        textinput: !!document.querySelector('#textinput'),
-                        checkbox: !!document.querySelector('#checkbox'),
-                        dropdown: !!document.querySelector('#dropdown'),
-                        visible: !!document.querySelector('#visible'),
-                        hidden: !!document.querySelector('#hidden'),
-                        withattr: !!document.querySelector('#withattr')
-                    }
-                });
-                true
-            """,
-            "returnByValue" => true
-        ))
-    @test get(get(get(result, "result", Dict()), "result", Dict()), "value", false) === true
+        @info "Injecting test content"
+        result = send_cdp_message(client,
+            "Runtime.evaluate",
+            Dict{String, Any}(
+                "expression" => """
+                    document.documentElement.innerHTML = `$(html_content)`;
+                    console.log('Page content set');
+                    document.readyState === 'complete'
+                """,
+                "returnByValue" => true
+            ))
 
-    # Add a longer wait for DOM to be ready
-    sleep(2)
+        @test get(get(get(result, "result", Dict()), "result", Dict()), "value", false) === true
 
-    # Verify each element exists and log their properties
-    result = send_cdp_message(client,
-        "Runtime.evaluate",
-        Dict{String, Any}(
-            "expression" => """
-                (function() {
-                    const elements = {
-                        button: document.querySelector('#clickme'),
-                        input: document.querySelector('#textinput'),
-                        checkbox: document.querySelector('#checkbox'),
-                        dropdown: document.querySelector('#dropdown'),
-                        visible: document.querySelector('#visible'),
-                        hidden: document.querySelector('#hidden'),
-                        withattr: document.querySelector('#withattr')
-                    };
+        # Verify DOM readiness
+        sleep(1)
+        @info "Verifying DOM elements"
+        selectors = ["#clickme", "#textinput", "#checkbox", "#dropdown", "#visible", "#hidden", "#withattr"]
+        for selector in selectors
+            @test verify_element_exists(client, selector)
+        end
 
-                    const status = Object.entries(elements).reduce((acc, [key, el]) => {
-                        acc[key] = el ? {
-                            exists: true,
-                            tagName: el.tagName,
-                            isConnected: el.isConnected,
-                            innerHTML: el.innerHTML
-                        } : { exists: false };
-                        return acc;
-                    }, {});
+        # Create element handles with verification
+        @info "Creating element handles"
+        elements = Dict{String, ElementHandle}()
+        try
+            elements["button"] = ElementHandle(client, "#clickme")
+            elements["input"] = ElementHandle(client, "#textinput")
+            elements["checkbox"] = ElementHandle(client, "#checkbox")
+            elements["dropdown"] = ElementHandle(client, "#dropdown")
+            elements["visible_div"] = ElementHandle(client, "#visible")
+            elements["hidden_div"] = ElementHandle(client, "#hidden")
+            elements["attr_div"] = ElementHandle(client, "#withattr")
+        catch e
+            @error "Failed to create element handles" exception=e
+            rethrow(e)
+        end
 
-                    console.log('Element status:', JSON.stringify(status, null, 2));
-                    return status;
-                })()
-            """,
-            "returnByValue" => true
-        ))
+        # Individual test sets with proper error handling
+        @testset "Basic Element Operations" begin
+            @info "Testing basic element operations"
+            try
+                @test evaluate_handle(elements["button"], "!!el") === true
+                @test evaluate_handle(elements["input"], "!!el") === true
 
-    element_status = get(
-        get(get(result, "result", Dict()), "result", Dict()), "value", Dict())
-    @info "Element status check" element_status
+                @test click(elements["button"])
+                @test type_text(elements["input"], "Hello World")
+                @test evaluate_handle(elements["input"], "el.value") == "Hello World"
+            catch e
+                @error "Basic operations failed" exception=e
+                rethrow(e)
+            end
+        end
 
-    # Verify all elements exist
-    for (key, status) in element_status
-        @test get(status, "exists", false) == true
+        @testset "Checkbox Operations" begin
+            @info "Testing checkbox operations"
+            try
+                @test !evaluate_handle(elements["checkbox"], "el.checked")
+                @test check(elements["checkbox"])
+                @test evaluate_handle(elements["checkbox"], "el.checked")
+                @test uncheck(elements["checkbox"])
+                @test !evaluate_handle(elements["checkbox"], "el.checked")
+            catch e
+                @error "Checkbox operations failed" exception=e
+                rethrow(e)
+            end
+        end
+
+        @testset "Select Operations" begin
+            @info "Testing select operations"
+            try
+                @test select_option(elements["dropdown"], "2")
+                @test evaluate_handle(elements["dropdown"], "el.value") == "2"
+            catch e
+                @error "Select operations failed" exception=e
+                rethrow(e)
+            end
+        end
+
+        @testset "Visibility Tests" begin
+            @info "Testing element visibility"
+            try
+                @test is_visible(elements["visible_div"])
+                @test !is_visible(elements["hidden_div"])
+            catch e
+                @error "Visibility tests failed" exception=e
+                rethrow(e)
+            end
+        end
+
+        @testset "Text and Attribute Operations" begin
+            @info "Testing text and attribute operations"
+            try
+                @test get_text(elements["visible_div"]) == "Visible Text"
+                @test get_attribute(elements["attr_div"], "data-test") == "testvalue"
+                @test get_attribute(elements["attr_div"], "nonexistent") === nothing
+                @test evaluate_handle(elements["visible_div"], "el.textContent.trim()") == "Visible Text"
+            catch e
+                @error "Text/attribute operations failed" exception=e
+                rethrow(e)
+            end
+        end
+
+    catch e
+        @error "Test suite failed" exception=e
+        rethrow(e)
+    finally
+        if client !== nothing
+            @info "Cleaning up test environment"
+            try
+                close(client)
+            catch e
+                @warn "Error during cleanup" exception=e
+            end
+        end
     end
-
-    # Add a longer wait to ensure DOM is fully interactive
-    sleep(1)
-
-    # Double check DOM is ready and elements are accessible
-    ready_check = send_cdp_message(client,
-        "Runtime.evaluate",
-        Dict{String, Any}(
-            "expression" => """
-                document.readyState === 'complete' &&
-                document.querySelector('#clickme') !== null &&
-                document.querySelector('#textinput') !== null
-            """,
-            "returnByValue" => true
-        ))
-    @test get(get(get(ready_check, "result", Dict()), "result", Dict()), "value", false) ===
-          true
-
-    # Create element handles directly using selectors
-    button = ElementHandle(client, "#clickme")
-    input = ElementHandle(client, "#textinput")
-    checkbox = ElementHandle(client, "#checkbox")
-    dropdown = ElementHandle(client, "#dropdown")
-    visible_div = ElementHandle(client, "#visible")
-    hidden_div = ElementHandle(client, "#hidden")
-    attr_div = ElementHandle(client, "#withattr")
-
-    @testset "element creation" begin
-        # Verify elements exist in DOM
-        @test evaluate_handle(button, "!!el") === true
-        @test evaluate_handle(input, "!!el") === true
-    end
-
-    @testset "checkbox operations" begin
-        # First verify checkbox exists and initial state
-        @test evaluate_handle(checkbox, "!!el") === true
-        initial_state = evaluate_handle(checkbox, "el.checked")
-        @test initial_state === false
-
-        @test check(checkbox)
-        @test evaluate_handle(checkbox, "el.checked") === true
-        @test uncheck(checkbox)
-        @test evaluate_handle(checkbox, "el.checked") === false
-    end
-
-    @testset "click" begin
-        @test click(button)
-    end
-
-    @testset "type_text" begin
-        @test type_text(input, "Hello World")
-        @test evaluate_handle(input, "el.value") == "Hello World"
-    end
-
-    @testset "checkbox operations" begin
-        @test !evaluate_handle(checkbox, "el.checked")
-        @test check(checkbox)
-        @test evaluate_handle(checkbox, "el.checked")
-        @test uncheck(checkbox)
-        @test !evaluate_handle(checkbox, "el.checked")
-    end
-
-    @testset "select_option" begin
-        @test select_option(dropdown, "2")
-        @test evaluate_handle(dropdown, "el.value") == "2"
-    end
-
-    @testset "visibility" begin
-        @test is_visible(visible_div)
-        @test !is_visible(hidden_div)
-    end
-
-    @testset "get_text" begin
-        @test get_text(visible_div) == "Visible Text"
-    end
-
-    @testset "get_attribute" begin
-        @test get_attribute(attr_div, "data-test") == "testvalue"
-        @test get_attribute(attr_div, "nonexistent") === nothing
-    end
-
-    @testset "evaluate_handle" begin
-        @test evaluate_handle(visible_div, "el.textContent.trim()") == "Visible Text"
-    end
-
-    # Cleanup
-    close(client)
 end

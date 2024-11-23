@@ -1,5 +1,6 @@
 using HTTP, JSON3
 using Logging
+include("utils.jl")
 
 """
     ElementHandle
@@ -39,7 +40,7 @@ function click(element::ElementHandle; options = Dict())
             """,
             "returnByValue" => true
         ))
-    success = get(get(get(result, "result", Dict()), "result", Dict()), "value", false)
+    success = extract_element_result(result)
     @info "Click operation result" selector=element.selector success=success
     return success
 end
@@ -75,7 +76,7 @@ function type_text(element::ElementHandle, text::String; options = Dict())
             """,
             "returnByValue" => true
         ))
-    success = get(get(get(result, "result", Dict()), "result", Dict()), "value", false)
+    success = extract_element_result(result)
     @info "Type text operation result" selector=element.selector success=success
     return success
 end
@@ -108,7 +109,7 @@ function check(element::ElementHandle; options = Dict())
             """,
             "returnByValue" => true
         ))
-    response = get(get(get(result, "result", Dict()), "result", Dict()), "value", Dict())
+    response = extract_element_result(result)
     success = get(response, "success", false)
     @info "Check operation result" selector=element.selector success=success
     return success
@@ -142,7 +143,7 @@ function uncheck(element::ElementHandle; options = Dict())
             """,
             "returnByValue" => true
         ))
-    response = get(get(get(result, "result", Dict()), "result", Dict()), "value", Dict())
+    response = extract_element_result(result)
     success = get(response, "success", false)
     @info "Uncheck operation result" selector=element.selector success=success
     return success
@@ -172,7 +173,7 @@ function select_option(element::ElementHandle, value::String; options = Dict())
             """,
             "returnByValue" => true
         ))
-    success = get(get(get(result, "result", Dict()), "result", Dict()), "value", false)
+    success = extract_element_result(result)
     @info "Select option result" selector=element.selector value=value success=success
     return success
 end
@@ -207,7 +208,7 @@ function is_visible(element::ElementHandle)
             """,
             "returnByValue" => true
         ))
-    visible = get(get(get(result, "result", Dict()), "result", Dict()), "value", false)
+    visible = extract_element_result(result)
     @info "Visibility check result" selector=element.selector visible=visible
     return visible
 end
@@ -234,7 +235,8 @@ function get_text(element::ElementHandle)
             """,
             "returnByValue" => true
         ))
-    response = get(get(get(result, "result", Dict()), "result", Dict()), "value", Dict())
+
+    response = extract_cdp_result(result, ["result", "result"])
     text = get(response, "value", "")
     @info "Get text result" selector=element.selector text=text
     return text
@@ -255,16 +257,27 @@ function get_attribute(element::ElementHandle, name::String)
                     const el = document.querySelector('$(element.selector)');
                     if (!el) {
                         console.log('Element not found for attribute:', '$(element.selector)');
-                        return null;
+                        return { success: false, value: null };
                     }
-                    return el.getAttribute('$(name)');
+                    const value = el.getAttribute('$(name)');
+                    return { success: true, value: value };
                 })()
             """,
             "returnByValue" => true
         ))
-    value = get(get(get(result, "result", Dict()), "result", Dict()), "value", nothing)
+
+    response = extract_cdp_result(result, ["result", "result"])
+    if response === nothing || !get(response, "success", false)
+        return nothing
+    end
+
+    value = get(response, "value", nothing)
+    if value === nothing
+        return nothing
+    end
+
     @info "Get attribute result" selector=element.selector attribute=name value=value
-    return value === nothing ? nothing : string(value)
+    return string(value)
 end
 
 """
@@ -280,57 +293,31 @@ function evaluate_handle(element::ElementHandle, expression::String)
             "expression" => """
                 (function() {
                     const el = document.querySelector('$(element.selector)');
-                    console.log('Selector lookup:', {
-                        selector: '$(element.selector)',
-                        found: !!el,
-                        isConnected: el ? el.isConnected : false,
-                        tagName: el ? el.tagName : null,
-                        innerHTML: el ? el.innerHTML : null,
-                        outerHTML: el ? el.outerHTML : null
-                    });
-
                     if (!el || !el.isConnected) {
                         console.error('Element not found or not connected to DOM:', '$(element.selector)');
-                        return { success: false, value: null, error: 'Element not found' };
+                        return { success: false, value: null };
                     }
-
                     try {
                         const fn = function(el) { return $(expression); };
                         const value = fn(el);
-                        console.log('Evaluation result:', {
-                            selector: '$(element.selector)',
-                            expression: '$(expression)',
-                            value: value,
-                            type: typeof value
-                        });
                         return {
                             success: true,
-                            value: value,
-                            type: typeof value
+                            value: value
                         };
                     } catch (e) {
                         console.error('Evaluation error:', e);
-                        return { success: false, value: null, error: e.toString() };
+                        return { success: false, value: null };
                     }
                 })()
             """,
             "returnByValue" => true
         ))
 
-    response = get(get(get(result, "result", Dict()), "result", Dict()), "value", Dict())
-    success = get(response, "success", false)
-    value = get(response, "value", nothing)
-    value_type = get(response, "type", nothing)
-    error_msg = get(response, "error", nothing)
-
-    @info "Evaluate handle result" selector=element.selector success=success value=value type=value_type error=error_msg
-
-    # Handle boolean values explicitly
-    if value_type == "boolean"
-        return value === true
+    response = extract_cdp_result(result, ["result", "result"])
+    if response === nothing || !get(response, "success", false)
+        return nothing
     end
-
-    return success ? value : nothing
+    return response["value"]
 end
 
 export ElementHandle, click, type_text, check, uncheck, select_option,

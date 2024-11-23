@@ -5,81 +5,94 @@ using Base.Threads: @async
 using Logging
 
 """
-    connect_browser(endpoint::String="http://localhost:9222") -> WSClient
+    verify_browser_available(endpoint::String) -> Bool
 
-Connect to Chrome browser at the given debugging endpoint.
-Returns a WebSocket client for CDP communication.
+Check if Chrome browser is available at the given endpoint.
 """
-function connect_browser(endpoint::String="http://localhost:9222")
+function verify_browser_available(endpoint::String)
     try
-        # Get available targets
-        response = HTTP.get("$endpoint/json/list")
-        targets = JSON3.read(response.body)
-
-        # Find or create a page target
-        page_target = nothing
-        for target in targets
-            if target["type"] == "page"
-                page_target = target
-                break
-            end
-        end
-
-        if isnothing(page_target)
-            response = HTTP.put("$endpoint/json/new")
-            page_target = JSON3.read(response.body)
-        end
-
-        ws_url = page_target["webSocketDebuggerUrl"]
-        client = WSClient(ws_url)
-        connected = Channel{Bool}(1)
-        error_channel = Channel{Any}(1)
-
-        # Create task to handle WebSocket connection
-        @async begin
-            try
-                WebSockets.open(ws_url) do ws
-                    client.ws = ws
-                    client.is_connected = true
-                    client.page_loaded = false
-                    start_message_handler(client)
-                    put!(connected, true)
-
-                    # Keep connection alive until closed
-                    while client.is_connected && !WebSockets.isclosed(ws)
-                        sleep(0.1)
-                    end
-                end
-            catch e
-                @error "WebSocket connection failed" exception=e
-                put!(error_channel, e)
-                put!(connected, false)
-            end
-        end
-
-        # Wait for connection with timeout
-        @async begin
-            sleep(5.0)
-            if !isready(connected)
-                put!(error_channel, "Connection timeout")
-                put!(connected, false)
-            end
-        end
-
-        # Check for errors or successful connection
-        if isready(error_channel)
-            error("WebSocket connection failed: $(take!(error_channel))")
-        end
-
-        if !take!(connected)
-            error("Failed to establish WebSocket connection")
-        end
-
-        return client
-    catch e
-        @error "Connection error" exception=e
-        rethrow(e)
+        response = HTTP.get("$endpoint/json/version")
+        return response.status == 200
+    catch
+        return false
     end
+end
+
+"""
+    find_available_target(targets::Vector) -> Union{Dict, Nothing}
+
+Find an available page target that isn't already being debugged.
+"""
+function find_available_target(targets)
+    for target in targets
+        if target["type"] == "page" && !get(target, "attached", false)
+            return target
+        end
+    end
+    return nothing
+end
+
+"""
+    connect_browser(endpoint::String="http://localhost:9222"; max_retries::Int=3) -> WSClient
+
+Connect to Chrome browser at the given debugging endpoint with enhanced error handling.
+"""
+function connect_browser(endpoint::String="http://localhost:9222"; max_retries::Int=3)
+    for attempt in 1:max_retries
+        try
+            @info "Connecting to browser (attempt $attempt/$max_retries)" endpoint
+
+            if !verify_browser_available(endpoint)
+                error("Chrome browser not available at $endpoint")
+            end
+
+            # Get available targets
+            response = HTTP.get("$endpoint/json/list")
+            targets = JSON3.read(response.body)
+
+            # Find an available target or create new one
+            page_target = find_available_target(targets)
+
+            if isnothing(page_target)
+                @debug "Creating new page target"
+                response = HTTP.put("$endpoint/json/new")
+                page_target = JSON3.read(response.body)
+            end
+
+            ws_url = page_target["webSocketDebuggerUrl"]
+            @debug "Creating WSClient" ws_url target_id=page_target["id"]
+
+            client = WSClient(ws_url)
+            connect!(client)
+
+            # Wait a bit for the connection to stabilize
+            sleep(0.5)
+
+            # Check if connection is still active
+            if !client.is_connected
+                error("WebSocket connection failed to establish")
+            end
+
+            @debug "Sending version check message"
+            # Verify connection is working with a simpler message first
+            result = send_cdp_message(client, "Browser.getVersion", Dict(); increment_id=false)
+
+            if haskey(result, "result")
+                @info "Connected to browser" version=get(result["result"], "product", "unknown")
+                return client
+            else
+                error("Failed to verify browser connection")
+            end
+
+        catch e
+            @error "Connection attempt $attempt failed" exception=e
+            if attempt == max_retries
+                rethrow(e)
+            end
+            sleep(2.0)  # Wait before retrying
+        end
+    end
+    error("Failed to connect after $max_retries attempts")
 end
 
 export connect_browser

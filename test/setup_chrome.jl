@@ -9,13 +9,13 @@ Otherwise, verifies Chrome is running on port 9222.
 """
 function setup_chrome()
     # First check if Chrome is already running on port 9222
+    @info "Checking if Chrome is already running on port 9222..."
     try
-        @info "Checking if Chrome is already running on port 9222..."
-        response = HTTP.get("http://localhost:9222/json/version")
+        response = HTTP.get("http://localhost:9222/json/version", retry=false, readtimeout=5)
         @info "Chrome already running on port 9222" version=String(response.body)
         return true
     catch e
-        @info "Chrome not running on port 9222" exception=e
+        @debug "Initial Chrome check failed" exception=e
 
         # Chrome is not running on port 9222
         if !Sys.islinux()
@@ -43,35 +43,49 @@ function setup_chrome()
             @info "Chrome already installed"
         end
 
-        # Kill any existing Chrome instances
+        # Kill any existing Chrome instances more thoroughly
+        @info "Cleaning up any existing Chrome processes..."
         try
-            @info "Cleaning up any existing Chrome processes..."
-            run(`pkill chrome`)
-            sleep(2)  # Increased sleep time
-        catch
-            @info "No existing Chrome processes found"
+            run(`pkill -f "google-chrome.*--remote-debugging-port"`)
+            sleep(3)  # Give more time for cleanup
+        catch e
+            @debug "No matching Chrome processes found" exception=e
         end
 
-        # Start Chrome in debug mode
+        # Start Chrome in debug mode with more robust options
         @info "Starting Chrome in debug mode..."
-        cmd = pipeline(`google-chrome --remote-debugging-port=9222 --headless --disable-gpu --no-sandbox`, stdout=devnull, stderr=devnull)
+        cmd = pipeline(
+            `google-chrome --remote-debugging-port=9222 --headless --disable-gpu --no-sandbox --disable-software-rasterizer`,
+            stdout=devnull,
+            stderr=devnull
+        )
         process = run(cmd, wait=false)
 
-        # Increased retries and wait time
-        max_retries = 5  # Increased from 2
+        # More robust startup check
+        max_retries = 10  # Increased retries
+        retry_delay = 3   # Seconds between retries
         for attempt in 1:max_retries
-            @info "Waiting for Chrome to start (attempt $attempt/$max_retries)..."
-            sleep(3)  # Increased from 2
+            @info "Checking Chrome availability (attempt $attempt/$max_retries)..."
             try
-                response = HTTP.get("http://localhost:9222/json/version")
+                # First check HTTP endpoint
+                response = HTTP.get("http://localhost:9222/json/version", retry=false, readtimeout=5)
                 version_info = String(response.body)
-                @info "Chrome started successfully" attempt version_info
-                return true
+
+                # Then verify WebSocket endpoint
+                endpoints = HTTP.get("http://localhost:9222/json/list", retry=false, readtimeout=5)
+                if occursin("webSocketDebuggerUrl", String(endpoints.body))
+                    @info "Chrome started successfully" attempt version_info
+                    return true
+                else
+                    @warn "Chrome started but WebSocket endpoint not ready"
+                end
             catch e
                 if attempt == max_retries
                     @error "Failed to start Chrome after $max_retries attempts" exception=e
+                    error("Chrome failed to start properly")
                 else
-                    @warn "Chrome not ready yet (attempt $attempt/$max_retries)" exception=e
+                    @debug "Chrome not ready yet (attempt $attempt/$max_retries)" exception=e
+                    sleep(retry_delay)
                 end
             end
         end
