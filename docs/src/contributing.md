@@ -75,7 +75,7 @@ Example from our codebase:
 ```julia
 # From examples/14_evaluate_handle_test.jl
 # Implementation of evaluate_handle
-element = query_selector(page, "#myButton")
+element = ElementHandle(client, "#myButton")
 result = evaluate_handle(element, "el => el.textContent")
 ```
 
@@ -88,7 +88,7 @@ Example test pattern:
 ```julia
 # Example error handling
 try
-    element = query_selector(page, "#non-existent")
+    element = ElementHandle(client, "#non-existent")
     if !isnothing(element)
         click(element)
     end
