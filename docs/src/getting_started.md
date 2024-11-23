@@ -44,7 +44,7 @@ close(client)
 
 ### Page Navigation
 - Use `goto` to navigate to URLs
-- `wait_for_selector` ensures elements are available
+- Use `query_selector` to find elements
 - `content` retrieves the page's HTML
 
 ### Element Interaction
@@ -53,11 +53,10 @@ close(client)
 - Check element state with `is_visible`, `get_text`
 
 ### Error Handling
-The package includes specific error types:
-- `TimeoutError`: Operation exceeded time limit
-- `ElementNotFoundError`: Element not found
-- `NavigationError`: Navigation failed
-- `ConnectionError`: CDP connection issues
+The package includes error handling for:
+- Connection issues
+- Navigation failures
+- Element interaction failures
 
 ## Best Practices
 
@@ -72,8 +71,8 @@ end
 
 2. Use timeouts appropriately:
 ```julia
-# Wait up to 5 seconds for element
-element = wait_for_selector(client, "#slow-element", timeout=5000)
+# Wait for element to be available
+element = query_selector(client, "#slow-element")
 ```
 
 3. Handle errors gracefully:
@@ -84,11 +83,8 @@ try
         click(element)
     end
 catch e
-    if e isa ElementNotFoundError
-        @warn "Element not found"
-    else
-        rethrow(e)
-    end
+    @warn "Element not found or interaction failed"
+    rethrow(e)
 end
 ```
 

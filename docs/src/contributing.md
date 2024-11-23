@@ -86,15 +86,14 @@ result = evaluate_handle(element, "el => el.textContent")
 
 Example test pattern:
 ```julia
-# From examples/05_error_handling.jl
+# Example error handling
 try
-    element = wait_for_selector(page, "#non-existent", timeout=5000)
-catch e
-    if e isa TimeoutError
-        println("Element not found within timeout period")
-    elseif e isa ElementNotFoundError
-        println("Element does not exist on the page")
+    element = query_selector(page, "#non-existent")
+    if !isnothing(element)
+        click(element)
     end
+catch e
+    println("Element interaction failed: ", e)
 end
 ```
 

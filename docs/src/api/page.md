@@ -63,7 +63,7 @@ try
     # Take screenshot
     screenshot = send_cdp_message(client, "Page.captureScreenshot", Dict{String, Any}())
 finally
-    close_browser(client)
+    close(client)
 end
 ```
 

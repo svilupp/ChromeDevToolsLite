@@ -54,7 +54,7 @@ client = connect_browser()
 try
     # Your automation code here
 finally
-    close_browser(client)
+    close(client)
 end
 ```
 
