@@ -19,7 +19,7 @@ makedocs(;
         "API Reference" => [
             "Browser" => "api/browser.md",
             "Page" => "api/page.md",
-            "ElementHandle" => "api/element_handle.md",
+            "Element" => "api/element.md",
             "CDP Implementation" => "api/cdp.md",
             "Utilities" => "api/utilities.md"
         ],
