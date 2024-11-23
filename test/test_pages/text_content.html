@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Text Content Test</title>
+</head>
+<body>
+    <div id="static-content">Static Text Content</div>
+    <div id="dynamic-content">Initial Content</div>
+    <script>
+        // Immediate content change
+        document.getElementById('dynamic-content').textContent = 'Changed Content';
+
+        // Delayed content change
+        setTimeout(() => {
+            document.getElementById('dynamic-content').textContent = 'Final Content';
+        }, 1000);
+    </script>
+</body>
+</html>
