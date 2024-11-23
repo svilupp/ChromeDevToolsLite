@@ -26,6 +26,9 @@ using JSON3
     @test haskey(response, "result") || error("Navigation failed: $response")
     @test haskey(response["result"], "frameId") || error("No frameId in response: $response")
 
+    # Wait for page load event
+    sleep(2)  # Add reasonable wait time for page load
+
     # Test JavaScript evaluation
     eval_response = send_cdp_message(client, "Runtime.evaluate", Dict{String, Any}(
         "expression" => "document.title",
