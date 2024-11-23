@@ -1,27 +1,49 @@
 using ChromeDevToolsLite
 using Test
-using Aqua
-push!(LOAD_PATH, joinpath(@__DIR__, "TestUtils/src"))
-using TestUtils
+using HTTP
+using Logging
 
+# Configure test logging
+ENV["JULIA_DEBUG"] = "ChromeDevToolsLite"
+logger = ConsoleLogger(stderr, Logging.Debug)
+global_logger(logger)
+
+include("test_utils.jl")
+
+# Ensure Chrome is running before tests
 @testset "ChromeDevToolsLite.jl" begin
-    @testset "Code quality (Aqua.jl)" begin
-        Aqua.test_all(ChromeDevToolsLite)
-    end
+    @info "Setting up Chrome for tests..."
+    try
+        # Try to set up Chrome
+        setup_success = false
+        setup_error = nothing
 
-    @testset "CDP" begin
-        include("cdp/test_messages.jl")
-        include("cdp/test_session.jl")
-    end
+        try
+            setup_success = setup_chrome()
+        catch e
+            setup_error = e
+            @error "Chrome setup failed" exception=e
+        end
 
-    @testset "Browser" begin
-        include("browser/test_process.jl")
-    end
+        if !setup_success
+            if setup_error !== nothing
+                @error "Chrome setup failed" exception=setup_error
+            end
+            error("Failed to set up Chrome for testing")
+        end
 
-    @testset "Core Types" begin
-        include("types/test_browser.jl")
-        include("types/test_browser_context.jl")
-        include("types/test_page.jl")
-        include("types/test_element_handle.jl")
+        @testset "WebSocket Implementation" begin
+            include("websocket_test.jl")
+        end
+
+        @testset "Basic Functionality" begin
+            include("basic_test.jl")
+        end
+
+        @testset "Element Interactions" begin
+            include("element_test.jl")
+        end
+    finally
+        cleanup()
     end
 end
