@@ -6,9 +6,9 @@ using Aqua
 
 # Configure test logging
 # ENV["JULIA_DEBUG"] = "ChromeDevToolsLite"
+# logger = ConsoleLogger(stderr, Logging.Debug)
+# global_logger(logger)
 const ENDPOINT = "http://localhost:9222"
-logger = ConsoleLogger(stderr, Logging.Debug)
-global_logger(logger)
 
 include("test_utils.jl")
 
