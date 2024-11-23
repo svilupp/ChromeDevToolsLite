@@ -43,6 +43,8 @@ Pkg.add("ChromeDevToolsLite")
 ## Prerequisites
 
 - Chrome/Chromium browser
+  - On Linux: Will be automatically installed during tests
+  - On other systems: Must be installed manually and started in debug mode
 - Julia 1.10 or higher
 
 ## Quick Start
