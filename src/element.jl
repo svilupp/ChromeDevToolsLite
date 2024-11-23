@@ -54,6 +54,8 @@ function type_text(element::ElementHandle, text::String; options = Dict())
                         return false;
                     }
                     el.focus();
+                    // Clear existing value
+                    el.value = '';
                     return true;
                 })()
             """,
@@ -67,6 +69,22 @@ function type_text(element::ElementHandle, text::String; options = Dict())
 
     # Use CDP to type text
     type_text(element.client, text)
+
+    # Ensure value is set and events are triggered
+    result = send_cdp_message(element.client,
+        "Runtime.evaluate",
+        Dict(
+            "expression" => """
+                (function() {
+                    const el = document.querySelector('$(element.selector)');
+                    el.value = '$(text)';
+                    el.dispatchEvent(new Event('input', { bubbles: true }));
+                    el.dispatchEvent(new Event('change', { bubbles: true }));
+                    return true;
+                })()
+            """,
+            "returnByValue" => true
+        ))
 
     element.verbose && @info "Type text operation completed" selector=element.selector
     return true
