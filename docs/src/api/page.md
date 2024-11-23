@@ -1,67 +1,63 @@
 # Page Navigation and Interaction
 
-This section describes the core CDP messages used for page navigation and interaction.
+```@docs
+goto
+content
+evaluate
+evaluate_handle
+screenshot
+```
 
 ## Navigation
 
-To navigate to a URL:
 ```julia
-send_cdp_message(client, "Page.navigate", Dict{String, Any}("url" => "https://example.com"))
+# Navigate to a URL
+goto(client, "https://example.com")
+
+# Get page content
+html = content(client)
 ```
 
 ## JavaScript Evaluation
 
-To evaluate JavaScript:
 ```julia
-result = send_cdp_message(client, "Runtime.evaluate", Dict{String, Any}(
-    "expression" => "document.title",
-    "returnByValue" => true
-))
-```
+# Evaluate JavaScript
+title = evaluate(client, "document.title")
 
-## Element Interaction
-
-To click an element:
-```julia
-# First find the element
-element = send_cdp_message(client, "DOM.querySelector", Dict{String, Any}(
-    "nodeId" => 1,  # document node
-    "selector" => "#submit-button"
-))
-
-# Then click it
-send_cdp_message(client, "DOM.click", Dict{String, Any}("nodeId" => element["result"]["nodeId"]))
+# Evaluate with element handle
+element = ElementHandle(client, "#myButton")
+result = evaluate_handle(element, "el => el.textContent")
 ```
 
 ## Screenshots
 
-To take a screenshot:
 ```julia
-screenshot = send_cdp_message(client, "Page.captureScreenshot", Dict{String, Any}())
-# Screenshot data is in screenshot["result"]["data"] as base64
+# Take a full page screenshot
+screenshot(client)
+
+# Take element screenshot
+element = ElementHandle(client, "header")
+screenshot(element)
 ```
 
 ## Examples
 
 ```julia
-# Basic page navigation and interaction
 client = connect_browser()
 
 try
-    # Navigate to page
-    send_cdp_message(client, "Page.navigate", Dict{String, Any}("url" => "https://example.com"))
+    # Navigate and interact with page
+    goto(client, "https://example.com")
 
-    # Wait for page load
-    sleep(2)  # Simple wait for demo purposes
+    # Get page title
+    title = evaluate(client, "document.title")
 
-    # Evaluate JavaScript
-    title = send_cdp_message(client, "Runtime.evaluate", Dict{String, Any}(
-        "expression" => "document.title",
-        "returnByValue" => true
-    ))
+    # Find and interact with elements
+    button = ElementHandle(client, "#submit-button")
+    click(button)
 
     # Take screenshot
-    screenshot = send_cdp_message(client, "Page.captureScreenshot", Dict{String, Any}())
+    screenshot(client)
 finally
     close(client)
 end
@@ -71,4 +67,8 @@ end
 
 Operations can throw:
 - `WebSocketError`: When there are issues with the WebSocket connection
-- `JSONError`: When there are issues parsing CDP messages
+
+Note: All operations support a `verbose` flag for detailed logging:
+```julia
+goto(client, "https://example.com", verbose=true)
+```
