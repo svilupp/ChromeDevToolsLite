@@ -200,9 +200,3 @@
    - Verify operation success explicitly
 
 See [HTTP Limitations](http_limitations.md) for detailed constraints and workarounds.
-
-4. Limitations and Workarounds:
-   - No real-time events → Use polling when necessary
-   - No element handles → Use JavaScript selectors
-   - No automatic waiting → Use sleep() between actions
-   - No dialog handling → Configure page to auto-accept/dismiss
