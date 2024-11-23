@@ -12,7 +12,7 @@ using JSON3
     @test !client.page_loaded
 
     # Test page navigation
-    response = send_cdp_message(client, "Page.navigate", Dict("url" => "https://www.example.com"))
+    response = send_cdp_message(client, "Page.navigate", Dict{String, Any}("url" => "https://www.example.com"))
     @test haskey(response, "result")
 
     # Wait for page load
@@ -20,7 +20,7 @@ using JSON3
     @test client.page_loaded
 
     # Test JavaScript evaluation
-    eval_response = send_cdp_message(client, "Runtime.evaluate", Dict(
+    eval_response = send_cdp_message(client, "Runtime.evaluate", Dict{String, Any}(
         "expression" => "document.title",
         "returnByValue" => true
     ))
