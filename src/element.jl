@@ -17,19 +17,23 @@ function click(element::ElementHandle; options = Dict())
                     }
                     // Ensure element is in viewport
                     el.scrollIntoView({behavior: 'instant', block: 'center'});
-                    // Dispatch events in correct order
-                    el.dispatchEvent(new MouseEvent('mousedown', {bubbles: true}));
-                    el.dispatchEvent(new MouseEvent('mouseup', {bubbles: true}));
-                    el.click();
                     return true;
                 })()
             """,
             "returnByValue" => true
         ))
     success = extract_element_result(result)
-    element.verbose &&
-        @info "Click operation result" selector=element.selector success=success
-    return success
+    if !success
+        element.verbose && @info "Click operation failed - element not found" selector=element.selector
+        return false
+    end
+
+    # Get element position and perform CDP click
+    pos = get_element_position(element.client, element.selector)
+    click(element.client; x=pos.x, y=pos.y)
+
+    element.verbose && @info "Click operation completed" selector=element.selector
+    return true
 end
 
 """
@@ -49,24 +53,23 @@ function type_text(element::ElementHandle, text::String; options = Dict())
                         console.error('Element not found or not connected to DOM');
                         return false;
                     }
-                    // Focus the element first
                     el.focus();
-                    // Clear existing value
-                    el.value = '';
-                    // Set new value
-                    el.value = '$(text)';
-                    // Dispatch events in correct order
-                    el.dispatchEvent(new Event('input', { bubbles: true }));
-                    el.dispatchEvent(new Event('change', { bubbles: true }));
-                    return el.value === '$(text)';
+                    return true;
                 })()
             """,
             "returnByValue" => true
         ))
     success = extract_element_result(result)
-    element.verbose &&
-        @info "Type text operation result" selector=element.selector success=success
-    return success
+    if !success
+        element.verbose && @info "Type text operation failed - element not found" selector=element.selector
+        return false
+    end
+
+    # Use CDP to type text
+    type_text(element.client, text)
+
+    element.verbose && @info "Type text operation completed" selector=element.selector
+    return true
 end
 
 """

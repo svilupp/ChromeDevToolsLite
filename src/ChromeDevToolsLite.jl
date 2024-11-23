@@ -55,7 +55,7 @@ export goto, evaluate, screenshot, content
 include("page.jl")
 
 # Include input functionality before element handling
-export click, dblclick, move_mouse, get_mouse_position, press_key, type_text
+export click, dblclick, move_mouse, get_mouse_position, press_key, type_text, get_element_position
 include("input.jl")
 
 export check, uncheck, select_option, is_visible, get_text, get_attribute, evaluate_handle

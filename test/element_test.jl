@@ -127,6 +127,11 @@ end
     @testset "Visibility Tests" begin
         @test is_visible(elements["visible_div"])
         @test !is_visible(elements["hidden_div"])
+
+        # Test element position
+        pos = get_element_position(client, "#visible")
+        @test pos.x > 0
+        @test pos.y > 0
     end
 
     @testset "Text and Attribute Operations" begin
