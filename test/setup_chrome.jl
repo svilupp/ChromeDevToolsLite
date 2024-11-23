@@ -1,4 +1,5 @@
 using HTTP
+using Logging
 
 """
     setup_chrome()

@@ -1,6 +1,7 @@
 using HTTP.WebSockets
 using JSON3
 using Base.Threads: @async
+using Logging
 
 # Simple WebSocket open implementation
 function open(url::String; kw...)
@@ -18,12 +19,23 @@ end
 Process CDP events.
 """
 function handle_event(client::WSClient, event::Dict)
-    method = get(event, "method", nothing)
-    if !isnothing(method)
-        if method == "Page.loadEventFired"
-            put!(client.message_channel, event)
+    try
+        method = get(event, "method", nothing)
+        if !isnothing(method)
+            if method == "Page.loadEventFired"
+                put!(client.message_channel, event)
+            end
+            # Add more event handlers as needed
         end
-        # Add more event handlers as needed
+    catch e
+        if isa(e, WebSocketError) && e.status == 1000
+            # Normal close, ignore
+            @debug "WebSocket closed normally"
+            return
+        else
+            # Real error, rethrow
+            rethrow(e)
+        end
     end
 end
 
