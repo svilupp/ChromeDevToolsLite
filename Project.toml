@@ -11,7 +11,6 @@ JSON3 = "0f8b85d8-7281-11e9-16c2-39a750bddbf1"
 Logging = "56ddb016-857b-54e1-b83d-db4d58db5568"
 
 [compat]
-Aqua = "0.8"
 Base64 = "1"
 Documenter = "1"
 HTTP = "1.10"
