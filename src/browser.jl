@@ -95,4 +95,45 @@ function connect_browser(endpoint::String="http://localhost:9222"; max_retries::
     error("Failed to connect after $max_retries attempts")
 end
 
-export connect_browser
+"""
+    close_browser(client::WSClient)
+
+Gracefully close the browser connection.
+"""
+function close_browser(client::WSClient)
+    try
+        send_cdp_message(client, "Browser.close")
+    catch e
+        @debug "Error during browser close" exception=e
+    finally
+        close(client)
+    end
+end
+
+"""
+    get_pages(client::WSClient) -> Vector{Dict}
+
+Get list of all open pages in the browser.
+"""
+function get_pages(client::WSClient)
+    result = send_cdp_message(client, "Target.getTargets")
+    if haskey(result, "result") && haskey(result["result"], "targetInfos")
+        return filter(t -> t["type"] == "page", result["result"]["targetInfos"])
+    end
+    return Dict[]
+end
+
+"""
+    new_page(client::WSClient) -> Dict
+
+Create a new page in the browser.
+"""
+function new_page(client::WSClient)
+    result = send_cdp_message(client, "Target.createTarget", Dict("url" => "about:blank"))
+    if haskey(result, "result") && haskey(result["result"], "targetId")
+        return Dict("targetId" => result["result"]["targetId"])
+    end
+    error("Failed to create new page")
+end
+
+export connect_browser, close_browser, get_pages, new_page

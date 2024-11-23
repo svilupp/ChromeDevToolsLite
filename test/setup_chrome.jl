@@ -1,5 +1,6 @@
 using HTTP
 using Logging
+using Base: Process, process_running
 
 """
     setup_chrome()
@@ -63,21 +64,32 @@ function setup_chrome()
 
         # More robust startup check
         max_retries = 10  # Increased retries
-        retry_delay = 3   # Seconds between retries
+        retry_delay = 5   # Increased delay between retries
         for attempt in 1:max_retries
             @info "Checking Chrome availability (attempt $attempt/$max_retries)..."
-            try
-                # First check HTTP endpoint
-                response = HTTP.get("http://localhost:9222/json/version", retry=false, readtimeout=5)
-                version_info = String(response.body)
 
-                # Then verify WebSocket endpoint
-                endpoints = HTTP.get("http://localhost:9222/json/list", retry=false, readtimeout=5)
-                if occursin("webSocketDebuggerUrl", String(endpoints.body))
+            # First check if the process is still running
+            if !process_running(process)
+                @error "Chrome process terminated unexpectedly"
+                error("Chrome process failed to start")
+            end
+
+            try
+                # Check HTTP endpoint
+                response = HTTP.get("http://localhost:9222/json/version", retry=false, readtimeout=10)
+                version_info = String(response.body)
+                @debug "Version endpoint response" version_info
+
+                # Verify WebSocket endpoint
+                endpoints = HTTP.get("http://localhost:9222/json/list", retry=false, readtimeout=10)
+                endpoints_info = String(endpoints.body)
+                @debug "List endpoint response" endpoints_info
+
+                if occursin("webSocketDebuggerUrl", endpoints_info)
                     @info "Chrome started successfully" attempt version_info
                     return true
                 else
-                    @warn "Chrome started but WebSocket endpoint not ready"
+                    @warn "Chrome started but WebSocket endpoint not ready" endpoints_info
                 end
             catch e
                 if attempt == max_retries
