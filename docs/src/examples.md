@@ -44,9 +44,9 @@ end
 element = ElementHandle(client, "#submit-button")
 click(element)
 
-# Find multiple elements
-elements = ElementHandles(client, ".item")
-for element in elements
+# Find and interact with multiple elements
+items = [ElementHandle(client, item) for item in ["#item1", "#item2", "#item3"]]
+for element in items
     if is_visible(element)
         text = get_text(element)
         testid = get_attribute(element, "data-testid")
@@ -82,17 +82,21 @@ check(checkbox)
 @assert evaluate_handle(checkbox, "el => el.checked") "Checkbox should be checked"
 
 # Form submission
-type_text(client, "#name", "John Doe")
-select_option(client, "#color", "blue")
-click(client, "button[type='submit']")
+input = ElementHandle(client, "#name")
+type_text(input, "John Doe")
+
+select = ElementHandle(client, "#color")
+select_option(select, "blue")
+
+submit = ElementHandle(client, "button[type='submit']")
+click(submit)
 
 # Multiple element handling
-elements = ElementHandles(client, ".item")
-for element in elements
+items = [ElementHandle(client, item) for item in ["#item1", "#item2", "#item3"]]
+for element in items
     if is_visible(element)
         text = get_text(element)
         testid = get_attribute(element, "data-testid")
         println("Item $testid: $text")
     end
 end
-```
