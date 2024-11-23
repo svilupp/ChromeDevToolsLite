@@ -38,10 +38,19 @@ function setup_chrome(; endpoint = ENDPOINT)
 
     if !chrome_installed
         @info "Chrome not found, installing..."
-        run(`wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add -`)
-        run(`sudo sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list'`)
-        run(`sudo apt-get update`)
-        run(`sudo apt-get install -y google-chrome-stable`)
+        # Create and run a temporary shell script to install Chrome
+        script = """
+        #!/bin/bash
+        wget -q -O /tmp/chrome_key.pub https://dl-ssl.google.com/linux/linux_signing_key.pub
+        sudo apt-key add /tmp/chrome_key.pub
+        sudo sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google.list'
+        sudo apt-get update
+        sudo apt-get install -y google-chrome-stable
+        """
+        write("/tmp/install_chrome.sh", script)
+        chmod("/tmp/install_chrome.sh", 0o755)
+        run(`/tmp/install_chrome.sh`)
+        rm("/tmp/install_chrome.sh")
         @info "Chrome installation completed"
     else
         @info "Chrome already installed"
