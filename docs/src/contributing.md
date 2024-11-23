@@ -26,11 +26,12 @@ brew install chromium
 ## Project Structure
 
 - `src/`: Source code
-  - `types/`: Core type definitions (Browser, Page)
-  - `http/`: HTTP endpoint handlers
+  - `types.jl`: Core type definitions (Browser, Page)
+  - `core.jl`: CDP method execution and HTTP utilities
 - `test/`: Test suite
 - `examples/`: Example scripts
 - `docs/`: Documentation
+- `HTTP_CAPABILITIES.md`: Supported features and limitations
 
 ## Running Tests
 
@@ -51,9 +52,9 @@ Note: Some tests require a running Chromium instance with remote debugging enabl
 
 ## Adding New Features
 
-1. Create a new branch:
+1. Create a new branch following our naming convention:
 ```bash
-git checkout -b feature/your-feature-name
+git checkout -b devin/$(date +%s)-your-feature-name
 ```
 
 2. Implement your changes
@@ -63,38 +64,58 @@ git checkout -b feature/your-feature-name
 
 ## Common Development Tasks
 
-### Adding a New HTTP Endpoint
-1. Add endpoint definition in appropriate type file
-2. Implement error handling
-3. Add unit tests
-4. Add example usage
-5. Update documentation
+### Adding New CDP Methods
+1. Test the method using Chrome DevTools Protocol documentation
+2. Implement the method using `execute_cdp_method`
+3. Add error handling and result parsing
+4. Add unit tests
+5. Update documentation and examples
 
-Example from our codebase:
+Example implementation:
 ```julia
-# Example of implementing a new endpoint
-browser = connect_browser()
-pages = get_pages(browser)
-new_page = new_page(browser)
-close_page(browser, new_page)
+# Example of implementing a new CDP method
+browser = Browser("http://localhost:9222")
+try
+    response = HTTP.get("$(browser.endpoint)/json/new")
+    page = Page(Dict(pairs(JSON3.read(String(response.body)))))
+
+    result = execute_cdp_method(browser, page, "YourDomain.yourMethod", Dict(
+        "param1" => "value1",
+        "param2" => "value2"
+    ))
+
+    if haskey(result, "result")
+        # Handle success
+    else
+        # Handle error
+    end
+finally
+    HTTP.get("$(browser.endpoint)/json/close/$(page.id)")
+end
 ```
 
 ### Testing Tips
-- Test HTTP endpoint responses
+- Test CDP method responses
 - Test error conditions
 - Verify edge cases
+- Ensure proper HTTP response handling
 
 Example test pattern:
 ```julia
-try
-    browser = connect_browser("http://localhost:9222")
-    page = new_page(browser)
-catch e
-    if e isa HTTP.RequestError
-        println("Failed to connect to Chrome")
-    else
-        println("Unexpected error: ", e)
-    end
+@testset "CDP Method Tests" begin
+    browser = Browser("http://localhost:9222")
+    response = HTTP.get("$(browser.endpoint)/json/new")
+    page = Page(Dict(pairs(JSON3.read(String(response.body)))))
+
+    result = execute_cdp_method(browser, page, "Runtime.evaluate", Dict(
+        "expression" => "document.title",
+        "returnByValue" => true
+    ))
+
+    @test haskey(result, "result")
+    @test haskey(result["result"], "value")
+
+    HTTP.get("$(browser.endpoint)/json/close/$(page.id)")
 end
 ```
 
