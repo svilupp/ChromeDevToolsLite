@@ -24,19 +24,17 @@ client = connect_browser()
 
 try
     # Navigate to a page
-    send_cdp_message(client, "Page.navigate", Dict("url" => "https://example.com"))
+    goto(client, "https://example.com")
 
-    # Evaluate JavaScript
-    result = send_cdp_message(client, "Runtime.evaluate", Dict(
-        "expression" => "document.title",
-        "returnByValue" => true
-    ))
+    # Get page content
+    page_content = content(client)
+
+    # Find and interact with elements
+    element = ElementHandle(client, "#submit-button")
+    click(element)
 
     # Take a screenshot
-    screenshot = send_cdp_message(client, "Page.captureScreenshot")
-
-    # Write screenshot to file
-    write("screenshot.png", base64decode(screenshot["result"]["data"]))
+    screenshot(client)
 finally
     close(client)
 end
