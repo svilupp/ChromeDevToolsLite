@@ -4,46 +4,41 @@ CurrentModule = ChromeDevToolsLite
 
 # ChromeDevToolsLite
 
-ChromeDevToolsLite.jl is a lightweight Julia package for browser automation using the Chrome DevTools Protocol (CDP). It provides a simple, intuitive interface for controlling Chrome/Chromium browsers programmatically.
+ChromeDevToolsLite.jl is a minimal Julia package for browser automation using the Chrome DevTools Protocol (CDP). It provides direct access to CDP commands with a lightweight interface.
 
 ## Features
 
-- Browser automation and control via Chrome DevTools Protocol
-- Page navigation and interaction with timeouts and error handling
-- Comprehensive element selection and manipulation
-- Form handling (input, checkboxes, dropdowns)
-- Screenshot capabilities (full page and elements)
-- Robust error handling with specific error types
+- Direct WebSocket connection to Chrome DevTools Protocol
+- Basic page navigation and JavaScript evaluation
+- Element interaction (click, type)
+- Screenshot capabilities
+- Minimal overhead and dependencies
 
 ## Quick Start
 
 ```julia
 using ChromeDevToolsLite
 
-# Launch browser and navigate
-browser = launch_browser()
-context = new_context(browser)
-page = new_page(context)
+# Connect to Chrome running with --remote-debugging-port=9222
+client = connect_browser()
 
 try
-    # Navigate and wait for content
-    goto(page, "https://example.com")
-    element = wait_for_selector(page, "#content")
+    # Navigate to a page
+    send_cdp_message(client, "Page.navigate", Dict("url" => "https://example.com"))
 
-    # Interact with forms
-    type_text(page, "#search", "query")
-    click(page, "#submit")
+    # Evaluate JavaScript
+    result = send_cdp_message(client, "Runtime.evaluate", Dict(
+        "expression" => "document.title",
+        "returnByValue" => true
+    ))
 
-    # Handle multiple elements
-    items = query_selector_all(page, ".item")
-    for item in items
-        println(get_text(item))
-    end
+    # Take a screenshot
+    screenshot = send_cdp_message(client, "Page.captureScreenshot")
 
-    # Take screenshots
-    screenshot(page, "page.png")
+    # Write screenshot to file
+    write("screenshot.png", base64decode(screenshot["result"]["data"]))
 finally
-    close(browser)
+    close(client)
 end
 ```
 

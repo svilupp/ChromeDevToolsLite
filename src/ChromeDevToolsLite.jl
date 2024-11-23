@@ -17,7 +17,8 @@ include("page.jl")
 include("element.jl")
 
 # Export core functionality
-export WSClient, connect_browser, send_cdp_message
+export WSClient, connect_cdp, send_cdp_message
 export goto, evaluate, screenshot, content
+export ElementHandle, click, type_text, check, uncheck, select_option, is_visible, get_text, get_attribute, evaluate_handle
 
 end

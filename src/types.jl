@@ -12,8 +12,9 @@ mutable struct WSClient
     is_connected::Bool
     message_channel::Channel{Dict{String, Any}}
     next_id::Int
+    page_loaded::Bool
 
-    WSClient(ws_url::String) = new(nothing, ws_url, false, Channel{Dict{String, Any}}(100), 1)
+    WSClient(ws_url::String) = new(nothing, ws_url, false, Channel{Dict{String, Any}}(100), 1, false)
 end
 
 """
@@ -23,22 +24,34 @@ Start asynchronous message handler for WebSocket client.
 """
 function start_message_handler(client::WSClient)
     @async begin
-        try
-            while client.is_connected && client.ws !== nothing
+        while client.is_connected && client.ws !== nothing
+            try
                 msg = String(receive(client.ws))
                 response = JSON3.read(msg, Dict{String, Any})
 
-                # Only put command responses in the channel, not events
-                if haskey(response, "id")
-                    put!(client.message_channel, response)
-                else
+                # Handle page load events
+                if !haskey(response, "id")  # This is an event
+                    if get(response, "method", "") == "Page.loadEventFired"
+                        client.page_loaded = true
+                    end
                     @debug "Received event" event=response
+                    continue
                 end
+
+                # Handle command responses
+                put!(client.message_channel, response)
+            catch e
+                if e isa WebSocketError && e.status == 1000  # Normal closure
+                    @debug "WebSocket closed normally"
+                    break
+                else
+                    @error "Message handler error" exception=e
+                end
+                client.is_connected = false
+                break
             end
-        catch e
-            @error "Message handler error" exception=e
-            client.is_connected = false
         end
+        client.is_connected = false
     end
 end
 
@@ -54,6 +67,11 @@ function send_cdp_message(client::WSClient, method::String, params::Dict{String,
 
     id = client.next_id
     client.next_id += 1
+
+    # Reset page_loaded flag when navigating
+    if method == "Page.navigate"
+        client.page_loaded = false
+    end
 
     message = Dict{String,Any}(
         "id" => id,
@@ -95,7 +113,11 @@ Close the WebSocket connection.
 function close(client::WSClient)
     if client.is_connected && !isnothing(client.ws)
         client.is_connected = false
-        close(client.ws)
+        try
+            close(client.ws)
+        catch e
+            @debug "Error during WebSocket closure" exception=e
+        end
         client.ws = nothing
     end
 end

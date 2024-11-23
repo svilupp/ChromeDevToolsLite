@@ -2,6 +2,7 @@ using HTTP
 using JSON3
 using HTTP.WebSockets
 using Base.Threads: @async
+using Logging
 
 """
     connect_browser(endpoint::String="http://localhost:9222") -> WSClient
@@ -32,34 +33,52 @@ function connect_browser(endpoint::String="http://localhost:9222")
         ws_url = page_target["webSocketDebuggerUrl"]
         client = WSClient(ws_url)
         connected = Channel{Bool}(1)
+        error_channel = Channel{Any}(1)
 
         # Create task to handle WebSocket connection
         @async begin
-            WebSockets.open(ws_url) do ws
-                client.ws = ws
-                client.is_connected = true
-                start_message_handler(client)
-                put!(connected, true)  # Signal connection is ready
+            try
+                WebSockets.open(ws_url) do ws
+                    client.ws = ws
+                    client.is_connected = true
+                    client.page_loaded = false
+                    start_message_handler(client)
+                    put!(connected, true)
 
-                # Keep connection alive until closed
-                while client.is_connected && !WebSockets.isclosed(ws)
-                    sleep(0.1)
+                    # Keep connection alive until closed
+                    while client.is_connected && !WebSockets.isclosed(ws)
+                        sleep(0.1)
+                    end
                 end
+            catch e
+                @error "WebSocket connection failed" exception=e
+                put!(error_channel, e)
+                put!(connected, false)
             end
         end
 
-        # Wait for connection to be established
+        # Wait for connection with timeout
+        @async begin
+            sleep(5.0)
+            if !isready(connected)
+                put!(error_channel, "Connection timeout")
+                put!(connected, false)
+            end
+        end
+
+        # Check for errors or successful connection
+        if isready(error_channel)
+            error("WebSocket connection failed: $(take!(error_channel))")
+        end
+
         if !take!(connected)
             error("Failed to establish WebSocket connection")
         end
 
-        # Enable necessary domains after connection is confirmed
-        send_cdp_message(client, "Page.enable")
-        send_cdp_message(client, "Runtime.enable")
-
         return client
     catch e
-        error("Failed to connect to Chrome: $e")
+        @error "Connection error" exception=e
+        rethrow(e)
     end
 end
 
