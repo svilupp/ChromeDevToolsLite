@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Form Validation Test</title>
+</head>
+<body>
+    <form id="test-form">
+        <input type="text" id="required-input" required>
+        <button type="submit" id="submit-button">Submit</button>
+    </form>
+    <div id="form-status"></div>
+
+    <script>
+        document.getElementById('test-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const input = document.getElementById('required-input');
+            const status = document.getElementById('form-status');
+            status.textContent = input.validity.valid ? 'Valid' : 'Invalid';
+        });
+    </script>
+</body>
+</html>

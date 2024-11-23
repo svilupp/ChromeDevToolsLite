@@ -52,46 +52,46 @@ Pkg.add("ChromeDevToolsLite")
 ```julia
 using ChromeDevToolsLite
 
-# Launch browser
-browser = launch_browser(headless=true)
+# Connect to browser with retry handling
+client = connect_browser(; max_retries=3)
 
-# Create new context and page
-context = new_context(browser)
-page = new_page(context)
-
-# Basic page operations with error handling
 try
-    goto(page, "https://example.com")
+    # Basic CDP message for navigation
+    send_cdp_message(client, "Page.navigate", Dict("url" => "https://example.com"))
 
-    # Wait for element with timeout
-    button = wait_for_selector(page, "#submit-button", timeout=5000)
-    click(button)
-
-    # Form interaction with error checking
-    if input = query_selector(page, "#search")
-        type_text(input, "search term")
+    # Create element handles for interaction
+    button = ElementHandle(client, "#submit-button")
+    if is_visible(button)
+        click(button)
     end
 
+    # Form interaction
+    input = ElementHandle(client, "#search")
+    type_text(input, "search term")
+
     # JavaScript evaluation
-    result = evaluate(page, "document.title")
-    println("Page title: $result")
+    result = send_cdp_message(client, "Runtime.evaluate",
+                           Dict("expression" => "document.title",
+                                "returnByValue" => true))
+    println("Page title: ", result["result"]["value"])
 
     # Take screenshot
-    screenshot(page, "example.png")
+    screenshot_result = send_cdp_message(client, "Page.captureScreenshot")
+    # Save base64 screenshot data
+    write("screenshot.png", base64decode(screenshot_result["result"]["data"]))
 catch e
-    if e isa TimeoutError
-        println("Operation timed out")
-    elseif e isa ElementNotFoundError
-        println("Element not found")
-    elseif e isa NavigationError
-        println("Navigation failed")
+    if e isa HTTP.WebSockets.WebSocketError
+        println("WebSocket connection error")
+    elseif e isa HTTP.ExceptionRequest.StatusError
+        println("Browser connection failed")
     else
         rethrow(e)
     end
 finally
-    # Always clean up resources
-    close(browser)
+    # Clean up resources
+    close_browser(client)
 end
+```
 
 ## Troubleshooting
 
@@ -100,49 +100,53 @@ end
 1. **Browser Connection Issues**
 ```julia
 # Ensure Chrome is running with debugging port
-# Wrong:
-chromium
-# Correct:
-chromium --remote-debugging-port=9222 --headless
+# First, check if Chrome is available
+if !verify_browser_available("http://localhost:9222")
+    error("Chrome not available. Start it with: chromium --remote-debugging-port=9222")
+end
+
+# Connect with retry mechanism
+client = connect_browser(; max_retries=3)
 ```
 
-2. **Timeout Errors**
+2. **Connection Retries**
 ```julia
-# Increase timeout for slow operations
-wait_for_selector(page, "#slow-element", timeout=60000)  # 60 seconds
-```
-
-3. **Element Not Found**
-```julia
-# Check element existence before interaction
-element = query_selector(page, "#my-element")
-if element !== nothing
-    click(element)
-else
-    println("Element not found, check selector")
+# Use ensure_chrome_running for automatic retry
+if !ensure_chrome_running(max_attempts=5, delay=1.0)
+    error("Failed to connect to Chrome after multiple attempts")
 end
 ```
 
-4. **Navigation Errors**
+3. **Element Interaction**
 ```julia
-try
-    goto(page, url)
-catch e
-    if e isa NavigationError
-        # Retry with longer timeout
-        goto(page, url, Dict("timeout" => 60000))
-    end
+# Check element visibility before interaction
+element = ElementHandle(client, "#my-element")
+if is_visible(element)
+    click(element)
+else
+    @warn "Element not visible or not found"
+end
+```
+
+4. **JavaScript Evaluation**
+```julia
+# Evaluate JavaScript with proper error handling
+result = send_cdp_message(client, "Runtime.evaluate",
+    Dict("expression" => "document.title",
+         "returnByValue" => true))
+if haskey(result, "result")
+    println("Result: ", result["result"]["value"])
 end
 ```
 
 5. **Resource Cleanup**
 ```julia
 # Always use try-finally for proper cleanup
-browser = Browser()
+client = connect_browser()
 try
     # Your code here
 finally
-    close(browser)
+    close_browser(client)
 end
 ```
 
@@ -188,10 +192,10 @@ julia --project=. examples/01_page_navigation_test.jl
 
 For detailed API documentation, see the `docs/` directory:
 
-- [Browser API](docs/src/api/browser.md)
-- [Page API](docs/src/api/page.md)
-- [ElementHandle API](docs/src/api/element_handle.md)
-- [Getting Started Guide](docs/src/getting_started.md)
+- [Browser API](docs/src/api/browser.md): Browser connection and CDP message handling
+- [Element API](docs/src/api/element.md): DOM element interactions and form handling
+- [Getting Started Guide](docs/src/getting_started.md): Quick start and basic usage examples
+- [Error Handling Guide](docs/src/error_handling.md): Common errors and troubleshooting
 
 ## Contributing
 

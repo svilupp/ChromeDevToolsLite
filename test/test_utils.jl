@@ -103,3 +103,52 @@ function cleanup()
         # Ignore cleanup errors
     end
 end
+
+"""
+    setup_test()
+
+Sets up the test environment and returns a connected client.
+"""
+function setup_test()
+    setup_chrome()
+
+    # Connect with retry
+    for attempt in 1:3
+        try
+            return connect_browser("http://localhost:9222")
+        catch e
+            if attempt == 3
+                rethrow(e)
+            end
+            sleep(1.0)
+        end
+    end
+end
+
+"""
+    teardown_test(client)
+
+Cleans up the test environment and closes the client connection.
+"""
+function teardown_test(client)
+    if client !== nothing
+        close(client)
+    end
+    cleanup()
+    sleep(0.5)  # Give Chrome time to clean up
+end
+
+"""
+    extract_element_result(response)
+
+Helper function to extract element result from CDP response.
+"""
+function extract_element_result(response)
+    if response isa Dict &&
+       haskey(response, "result") &&
+       haskey(response["result"], "result") &&
+       haskey(response["result"]["result"], "value")
+        return response["result"]["result"]["value"]
+    end
+    return nothing
+end
