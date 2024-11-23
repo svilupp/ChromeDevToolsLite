@@ -29,10 +29,8 @@ end
 
 ## Error Handling
 
-The browser operations can throw the following errors:
-- `WebSocketError`: When there are issues with the WebSocket connection
-- `JSONError`: When there are issues parsing CDP messages
-- `HTTP.ExceptionRequest.StatusError`: When the browser endpoint is not available
+The browser operations can throw:
+- `WebSocketError`: When there are issues with the WebSocket connection or the browser endpoint is not available
 
 ## Configuration
 

@@ -45,4 +45,3 @@ close(client)  # Use Base.close
 
 The following errors may be thrown:
 - `WebSocketError`: Connection or message transmission issues
-- `JSONError`: Message parsing issues
