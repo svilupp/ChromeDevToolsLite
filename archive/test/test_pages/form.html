@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Form</title>
+</head>
+<body>
+    <h1>Test Form</h1>
+    <form id="testForm">
+        <div>
+            <label for="name">Name:</label>
+            <input type="text" id="name" name="name">
+        </div>
+        <div>
+            <label for="color">Favorite Color:</label>
+            <select id="color" name="color">
+                <option value="">Choose...</option>
+                <option value="red">Red</option>
+                <option value="blue">Blue</option>
+                <option value="green">Green</option>
+            </select>
+        </div>
+        <div>
+            <button type="submit">Submit</button>
+        </div>
+    </form>
+    <div id="result" style="display: none;"></div>
+
+    <script>
+        document.getElementById('testForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const name = document.getElementById('name').value;
+            const color = document.getElementById('color').value;
+            const result = document.getElementById('result');
+            result.textContent = `Hello ${name}! Your favorite color is ${color}.`;
+            result.style.display = 'block';
+        });
+    </script>
+</body>
+</html>

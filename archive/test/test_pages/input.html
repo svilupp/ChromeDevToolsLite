@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Input Test</title>
+</head>
+<body>
+    <input type="text" id="test-input" />
+    <div id="input-value"></div>
+    <script>
+        const input = document.getElementById('test-input');
+        input.addEventListener('input', (e) => {
+            document.getElementById('input-value').textContent = e.target.value;
+        });
+        input.addEventListener('change', (e) => {
+            document.getElementById('input-value').textContent += ' (changed)';
+        });
+    </script>
+</body>
+</html>

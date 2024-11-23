@@ -1,0 +1,7 @@
+abstract type AbstractBrowser end
+abstract type AbstractBrowserContext end
+abstract type AbstractPage end
+abstract type AbstractElementHandle end
+abstract type AbstractBrowserProcess end
+abstract type AbstractWebSocketConnection end
+abstract type AbstractCDPSession end
