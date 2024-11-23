@@ -2,11 +2,6 @@
 
 ```@docs
 connect_browser
-send_cdp_message
-ensure_chrome_running
-get_ws_id
-connect!
-close
 ```
 
 ## Examples
@@ -31,8 +26,12 @@ end
 
 ## Error Handling
 
-The browser operations can throw:
-- `WebSocketError`: When there are issues with the WebSocket connection or the browser endpoint is not available
+Browser operations can throw various exceptions. See [Error Types](@ref) in the Types section for details.
+
+## Usage Notes
+- Ensure Chrome is running in debug mode before connecting
+- Always close the connection when done
+- Use verbose mode for debugging connection issues
 
 ## Configuration
 

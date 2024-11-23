@@ -4,7 +4,6 @@
 goto
 content
 evaluate
-evaluate_handle
 screenshot
 ```
 
@@ -65,8 +64,7 @@ end
 
 ## Error Handling
 
-Operations can throw:
-- `WebSocketError`: When there are issues with the WebSocket connection
+Page operations can throw various exceptions. See [Error Types](@ref) in the Types section for details.
 
 Note: All operations support a `verbose` flag for detailed logging:
 ```julia

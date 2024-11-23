@@ -20,8 +20,9 @@ makedocs(;
             "Browser" => "api/browser.md",
             "Page" => "api/page.md",
             "Element" => "api/element.md",
-            "CDP Implementation" => "api/cdp.md",
-            "Utilities" => "api/utilities.md"
+            "CDP" => "api/cdp.md",
+            "Utilities" => "api/utilities.md",
+            "Error Types" => "error_types.md"
         ],
         "Examples" => "examples.md",
         "Contributing" => "contributing.md"

@@ -1,7 +1,6 @@
 # Chrome DevTools Protocol (CDP)
 
 ```@docs
-send_cdp_message
 extract_cdp_result
 extract_element_result
 ```
@@ -28,8 +27,7 @@ end
 
 ## Error Handling
 
-The following errors may be thrown:
-- `WebSocketError`: Connection or message transmission issues
+CDP operations may throw various errors. See [Error Types](@ref) in the Types section for details.
 
 Note: All CDP operations support verbose logging:
 ```julia

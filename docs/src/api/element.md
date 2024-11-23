@@ -47,10 +47,7 @@ result = evaluate_handle(element, "el => el.getBoundingClientRect()")
 
 ## Error Handling
 
-All element operations include proper error handling:
-- Return `false` or `nothing` on failure
-- Log detailed error information at debug level
-- Verify element existence and connection before operations
+Element operations can throw various exceptions. See [Error Types](@ref) in the Types section for details.
 
 ## Element Selection
 
