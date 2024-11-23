@@ -68,10 +68,10 @@ element = ElementHandle(client, "div.container > button[type='submit']")
 
 ## Logging
 
-Functions include debug and info logging. Control verbosity with Julia's logging system:
+All element operations support verbose logging through the `verbose` flag:
 ```julia
-using Logging
-global_logger(ConsoleLogger(stderr, Logging.Debug))
+element = ElementHandle(client, "#myId", verbose=true)
+click(element, verbose=true)
 ```
 
 ## Best Practices
