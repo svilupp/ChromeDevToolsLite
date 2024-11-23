@@ -50,3 +50,38 @@ function extract_element_result(response::Dict)
 
     return nothing
 end
+
+"""
+    with_retry(f::Function; max_retries::Int = MAX_RETRIES, retry_delay::Real = RETRY_DELAY, verbose::Bool = false)
+
+Executes the function `f` with retry logic. It will attempt to execute `f` up to `max_retries` times, waiting `retry_delay` seconds between attempts.
+
+# Arguments
+- `f::Function`: The function to execute with retries.
+- `max_retries::Int`: The maximum number of retries.
+- `retry_delay::Real`: The delay between retries in seconds.
+- `verbose::Bool`: Whether to print verbose debug information.
+
+# Returns
+- The result of executing `f` if successful.
+
+# Throws
+- The last exception encountered if all retries fail.
+"""
+function with_retry(f::Function; max_retries::Int = MAX_RETRIES,
+        retry_delay::Real = RETRY_DELAY, verbose::Bool = false)
+    for attempt in 1:max_retries
+        try
+            verbose && @debug "Attempt $attempt/$max_retries"
+            return f()
+        catch e
+            if attempt == max_retries
+                verbose && @error "All retry attempts failed" exception=e
+                rethrow(e)
+            else
+                verbose && @warn "Attempt $attempt failed, retrying..." exception=e
+                sleep(retry_delay)
+            end
+        end
+    end
+end

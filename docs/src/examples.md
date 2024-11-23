@@ -2,25 +2,23 @@
 
 This guide showcases practical examples from our test suite demonstrating various ChromeDevToolsLite features.
 
-## Browser and Page Management
+## Browser Connection
 ```julia
-# From examples/00_browser_test.jl
-browser = launch_browser()
-context = new_context(browser)
-page = new_page(context)
+# Connect to Chrome DevTools with verbose logging for debugging
+client = connect_browser(verbose=true)
 
 try
-    goto(page, "https://example.com")
-    title = get_title(page)
-    @assert title == "Example Domain"
+    goto(client, "https://example.com")
+    content_result = content(client)
+    @assert contains(content_result, "<title>Example Domain</title>")
 finally
-    close(browser)
+    close(client)
 end
 ```
 
 ## Form Filling
 ```julia
-# Fill out a complex form
+# Fill out a complex form with verbose logging
 form_data = Dict(
     "#name" => "John Doe",
     "#email" => "john@example.com",
@@ -29,88 +27,77 @@ form_data = Dict(
 )
 
 for (selector, value) in form_data
-    element = query_selector(page, selector)
+    element = ElementHandle(client, selector, verbose=true)
     if value isa Bool
-        value ? check(element) : uncheck(element)
+        value ? check(element, verbose=true) : uncheck(element, verbose=true)
     elseif selector == "#country"
-        select_option(element, value)
+        select_option(element, value, verbose=true)
     else
-        type_text(element, value)
+        type_text(element, value, verbose=true)
     end
 end
 ```
 
-## Working with Multiple Pages
+## Working with Elements
 ```julia
-# Open multiple pages
-page1 = new_page(context)
-page2 = new_page(context)
+# Find and interact with elements
+element = ElementHandle(client, "#submit-button", verbose=true)
+click(element, verbose=true)
 
-# Navigate each page
-goto(page1, "https://example.com/page1")
-goto(page2, "https://example.com/page2")
-
-# Get all pages
-all_pages = pages(context)
+# Find and interact with multiple elements
+items = [ElementHandle(client, item, verbose=true) for item in ["#item1", "#item2", "#item3"]]
+for element in items
+    if is_visible(element)
+        text = get_text(element)
+        testid = get_attribute(element, "data-testid")
+        println("Item $testid: $text")
+    end
+end
 ```
 
-## Error Handling Examples
+## Dynamic Content Handling
 ```julia
-try
-    # Wait for dynamic content with timeout
-    element = wait_for_selector(page, "#dynamic-content", timeout=5000)
-
-    # Interact if element exists
-    if !isnothing(element) && is_visible(element)
-        click(element)
-    end
-catch e
-    if e isa TimeoutError
-        @warn "Element did not appear in time"
-    elseif e isa ElementNotFoundError
-        @warn "Element not found"
-    else
-        rethrow(e)
-    end
+# Check element visibility and interact with verbose logging
+element = ElementHandle(client, "#dynamic-content", verbose=true)
+if !isnothing(element) && is_visible(element)
+    click(element, verbose=true)
 end
 ```
 
 ## Taking Screenshots
 ```julia
-# From examples/16_screenshot_comprehensive_test.jl
 # Full page screenshot
-screenshot(page, "full_page.png")
+screenshot(client, verbose=true)
 
 # Element-specific screenshot
-special_item = query_selector(page, ".item.special")
-screenshot(special_item, "element.png")
-
-# Screenshot with custom clip region
-container = query_selector(page, ".container")
-box = get_bounding_box(container)
-screenshot(page, "clipped.png", Dict("clip" => box))
+special_item = ElementHandle(client, ".item.special", verbose=true)
+screenshot(special_item, verbose=true)
+```
 
 ## Element Interaction and Form Handling
 ```julia
-# From examples/07_checkbox_test.jl
-# Checkbox interaction
-checkbox = query_selector(page, "#notifications")
-check(checkbox)
-@assert evaluate_handle(checkbox, "el => el.checked") "Checkbox should be checked"
+# Enable verbose mode for detailed operation logging
+checkbox = ElementHandle(client, "#notifications", verbose=true)
+check(checkbox, verbose=true)
+@assert evaluate_handle(checkbox, "el => el.checked", verbose=true) "Checkbox should be checked"
 
-# From examples/03_page_interactions.jl
 # Form submission
-type_text(page, "#name", "John Doe")
-select_option(page, "#color", "blue")
-click(page, "button[type='submit']")
+input = ElementHandle(client, "#name", verbose=true)
+type_text(input, "John Doe", verbose=true)
 
-# From examples/15_query_selector_all_test.jl
+select = ElementHandle(client, "#color", verbose=true)
+select_option(select, "blue", verbose=true)
+
+submit = ElementHandle(client, "button[type='submit']", verbose=true)
+click(submit, verbose=true)
+
 # Multiple element handling
-elements = query_selector_all(page, ".item")
-for element in elements
+items = [ElementHandle(client, item, verbose=true) for item in ["#item1", "#item2", "#item3"]]
+for element in items
     if is_visible(element)
         text = get_text(element)
         testid = get_attribute(element, "data-testid")
-        println("Item \$testid: \$text")
+        println("Item $testid: $text")
     end
 end
+```

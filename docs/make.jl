@@ -18,11 +18,11 @@ makedocs(;
         "Getting Started" => "getting_started.md",
         "API Reference" => [
             "Browser" => "api/browser.md",
-            "BrowserContext" => "api/browser_context.md",
             "Page" => "api/page.md",
-            "ElementHandle" => "api/element_handle.md",
-            "CDP Implementation" => "api/cdp.md",
-            "Utilities" => "api/utilities.md"
+            "Element" => "api/element.md",
+            "CDP" => "api/cdp.md",
+            "Utilities" => "api/utilities.md",
+            "Error Types" => "error_types.md"
         ],
         "Examples" => "examples.md",
         "Contributing" => "contributing.md"

@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dynamic Content Test</title>
+    <style>
+        .hidden {
+            display: none;
+        }
+        .invisible {
+            visibility: hidden;
+        }
+    </style>
+</head>
+<body>
+    <div id="content">Initial Content</div>
+    <div id="dynamic-content">Dynamic Text</div>
+    <button id="update-button">Update Content</button>
+
+    <div id="visibility-test">
+        <div id="visible-element">Visible Element</div>
+        <div id="hidden-element" class="hidden">Hidden Element</div>
+        <div id="invisible-element" class="invisible">Invisible Element</div>
+    </div>
+
+    <div id="delayed-content" class="hidden">This appears after delay</div>
+    <button id="show-delayed">Show Delayed Content</button>
+
+    <script>
+        document.getElementById('update-button').addEventListener('click', function() {
+            document.getElementById('dynamic-content').textContent = 'Updated: ' + new Date().toISOString();
+        });
+
+        document.getElementById('show-delayed').addEventListener('click', function() {
+            setTimeout(() => {
+                document.getElementById('delayed-content').classList.remove('hidden');
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

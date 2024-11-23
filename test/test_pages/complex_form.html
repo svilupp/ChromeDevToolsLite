@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Complex Form Test</title>
+    <style>
+        .error { color: red; display: none; }
+        .success { color: green; display: none; }
+    </style>
+</head>
+<body>
+    <form id="complex-form">
+        <div>
+            <label for="username">Username:</label>
+            <input type="text" id="username" required minlength="3" maxlength="20">
+            <span class="error" id="username-error">Username must be 3-20 characters</span>
+        </div>
+
+        <div>
+            <label>Preferences:</label>
+            <input type="checkbox" id="pref1" name="preferences" value="email">
+            <label for="pref1">Email updates</label>
+            <input type="checkbox" id="pref2" name="preferences" value="sms">
+            <label for="pref2">SMS updates</label>
+        </div>
+
+        <div>
+            <label>Notification Type:</label>
+            <select id="notification-type">
+                <option value="">Select type...</option>
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+            </select>
+        </div>
+
+        <button type="submit" id="submit-form">Submit</button>
+    </form>
+
+    <div id="form-result" class="success">Form submitted successfully!</div>
+
+    <script>
+        const form = document.getElementById('complex-form');
+        const username = document.getElementById('username');
+        const usernameError = document.getElementById('username-error');
+        const result = document.getElementById('form-result');
+
+        username.addEventListener('input', function() {
+            if (this.value.length >= 3 && this.value.length <= 20) {
+                usernameError.style.display = 'none';
+            } else {
+                usernameError.style.display = 'block';
+            }
+        });
+
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            if (form.checkValidity()) {
+                result.style.display = 'block';
+            }
+        });
+    </script>
+</body>
+</html>

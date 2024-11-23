@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Page Operations Test</title>
+</head>
+<body>
+    <h1>Page Operations Test</h1>
+    <div id="content">Initial Content</div>
+    <script>
+        // Function to modify content for testing evaluate()
+        function modifyContent(text) {
+            document.getElementById('content').textContent = text;
+            return true;
+        }
+
+        // Function to test return values
+        function getTestValues() {
+            return {
+                number: 42,
+                string: "test string",
+                boolean: true,
+                array: [1, 2, 3],
+                object: { key: "value" }
+            };
+        }
+    </script>
+</body>
+</html>

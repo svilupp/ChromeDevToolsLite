@@ -14,54 +14,60 @@ Here's a simple example that demonstrates the core functionality:
 ```julia
 using ChromeDevToolsLite
 
-# Launch a browser
-browser = launch_browser()
-
-# Create a new context and page
-context = new_context(browser)
-page = new_page(context)
+# Connect to browser (enable verbose mode for debugging)
+client = connect_browser(verbose=true)
 
 # Navigate to a website
-goto(page, "https://example.com")
+goto(client, "https://example.com")
 
 # Find and interact with elements
-button = wait_for_selector(page, "#submit-button")
-click(button)
+element = ElementHandle(client, "#submit-button", verbose=true)
+click(element, verbose=true)
 
 # Fill out a form
-input = query_selector(page, "#search")
-type_text(input, "search query")
+input = ElementHandle(client, "#search", verbose=true)
+type_text(input, "search query", verbose=true)
 
 # Take a screenshot
-screenshot(page)
+screenshot(client, verbose=true)
 
 # Clean up
-close(browser)
+close(client)
 ```
 
 ## Key Concepts
 
 ### Browser Management
-- A `Browser` instance represents a Chromium browser process
-- Each browser can have multiple `BrowserContext`s (like incognito windows)
-- Each context can have multiple `Page`s
+- A WebSocket connection to Chrome DevTools Protocol
+- Each connection can control a Chrome browser instance
+- Supports page navigation, element interaction, and JavaScript evaluation
 
 ### Page Navigation
 - Use `goto` to navigate to URLs
-- `wait_for_selector` ensures elements are available
-- `content` retrieves the page's HTML
+- Use `ElementHandle` to find elements
+- Use `content` to retrieve the page's HTML
 
 ### Element Interaction
-- Find elements using CSS selectors
+- Find elements using CSS selectors with `ElementHandle`
 - Interact using methods like `click`, `type_text`
 - Check element state with `is_visible`, `get_text`
+- Enable verbose mode for debugging: `ElementHandle(client, selector, verbose=true)`
+
+### Debugging
+- Use verbose flag for detailed logging:
+  ```julia
+  client = connect_browser(verbose=true)
+  element = ElementHandle(client, "#button", verbose=true)
+  click(element, verbose=true)
+  ```
+- Check operation results and error messages
+- Monitor browser console output
 
 ### Error Handling
-The package includes specific error types:
-- `TimeoutError`: Operation exceeded time limit
-- `ElementNotFoundError`: Element not found
-- `NavigationError`: Navigation failed
-- `ConnectionError`: CDP connection issues
+The package includes error handling for:
+- Connection issues
+- Navigation failures
+- Element interaction failures
 
 ## Best Practices
 
@@ -70,64 +76,70 @@ The package includes specific error types:
 try
     # Your code here
 finally
-    close(browser)
+    close(client)
 end
 ```
 
-2. Use timeouts appropriately:
+2. Use verbose mode during development:
 ```julia
-# Wait up to 5 seconds for element
-element = wait_for_selector(page, "#slow-element", timeout=5000)
+# Enable verbose mode for detailed logging
+client = connect_browser(verbose=true)
+element = ElementHandle(client, "#slow-element", verbose=true)
+if !isnothing(element)
+    click(element, verbose=true)
+end
 ```
 
 3. Handle errors gracefully:
 ```julia
 try
-    element = query_selector(page, "#maybe-exists")
+    element = ElementHandle(client, "#maybe-exists", verbose=true)
     if !isnothing(element)
-        click(element)
+        click(element, verbose=true)
     end
 catch e
-    if e isa ElementNotFoundError
-        @warn "Element not found"
-    else
-        rethrow(e)
-    end
+    @warn "Element not found or interaction failed" exception=e
+    rethrow(e)
 end
 ```
 
 4. Working with Multiple Elements:
 ```julia
-# From examples/15_query_selector_all_test.jl
-all_items = query_selector_all(page, ".item")
+# Find multiple elements
+items = [ElementHandle(client, ".item", verbose=true) for _ in 1:3]
 for item in items
     if is_visible(item)
         text = get_text(item)
         testid = get_attribute(item, "data-testid")
-        println("Item \$testid: \$text")
+        println("Item $testid: $text")
     end
 end
 ```
 
 5. Form Interactions:
 ```julia
-# From examples/03_page_interactions.jl
-type_text(page, "#name", "John Doe")
-select_option(page, "#color", "blue")
-click(page, "button[type='submit']")
+# Fill out a form
+name_input = ElementHandle(client, "#name", verbose=true)
+type_text(name_input, "John Doe", verbose=true)
+
+color_select = ElementHandle(client, "#color", verbose=true)
+select_option(color_select, "blue", verbose=true)
+
+submit_button = ElementHandle(client, "button[type='submit']", verbose=true)
+click(submit_button, verbose=true)
 
 # Verify submission
-result_text = get_text(page, "#result")
-@assert contains(result_text, "John Doe")
+result = ElementHandle(client, "#result", verbose=true)
+@assert contains(get_text(result), "John Doe")
 ```
 
 6. Screenshots:
 ```julia
 # From examples/16_screenshot_comprehensive_test.jl
 # Full page screenshot
-screenshot(page, "full_page.png")
+screenshot(client, verbose=true)
 
 # Element-specific screenshot
-header = query_selector(page, "header")
-screenshot(header, "header.png")
+header = ElementHandle(client, "header", verbose=true)
+screenshot(header, verbose=true)
 ```

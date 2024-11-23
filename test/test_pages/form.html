@@ -20,6 +20,19 @@
             </select>
         </div>
         <div>
+            <label>Interests:</label>
+            <div id="checkGroup">
+                <input type="checkbox" id="check1" name="interests" value="coding">
+                <label for="check1">Coding</label>
+                
+                <input type="checkbox" id="check2" name="interests" value="reading">
+                <label for="check2">Reading</label>
+                
+                <input type="checkbox" id="check3" name="interests" value="gaming">
+                <label for="check3">Gaming</label>
+            </div>
+        </div>
+        <div>
             <button type="submit">Submit</button>
         </div>
     </form>
@@ -30,8 +43,12 @@
             e.preventDefault();
             const name = document.getElementById('name').value;
             const color = document.getElementById('color').value;
+            const checkedBoxes = document.querySelectorAll('#checkGroup input[type="checkbox"]:checked');
+            const interests = Array.from(checkedBoxes).map(cb => cb.value).join(', ');
+            
             const result = document.getElementById('result');
-            result.textContent = `Hello ${name}! Your favorite color is ${color}.`;
+            result.textContent = `Hello ${name}! Your favorite color is ${color}. ` + 
+                               (interests ? `Your interests include: ${interests}.` : 'You haven\'t selected any interests.');
             result.style.display = 'block';
         });
     </script>

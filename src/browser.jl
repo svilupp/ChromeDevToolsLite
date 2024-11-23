@@ -1,117 +1,44 @@
 """
-    verify_browser_available(endpoint::String) -> Bool
+    ensure_browser_available(
+        endpoint::String;
+        max_retries::Int = MAX_RETRIES,
+        retry_delay::Real = RETRY_DELAY,
+        verbose::Bool = false
+)
 
-Check if Chrome browser is available at the given endpoint.
-"""
-function verify_browser_available(endpoint::String)
-    try
-        response = HTTP.get("$endpoint/json/version")
-        return response.status == 200
-    catch
-        return false
-    end
-end
+Checks if Chrome is running in debug mode on the specified endpoint.
+Retries up to `max_retries` times with specified `retry_delay` between attempts.
+Returns `true` if Chrome is responding on the debug port.
 
+# Arguments
+- `endpoint::String`: The URL of the Chrome debugging endpoint. Eg, `http://localhost:9222`.
+- `max_retries::Int`: The maximum number of retries to check for Chrome.
+- `retry_delay::Real`: The delay between retries in seconds.
+- `verbose::Bool`: Whether to print verbose debug information.
 """
-    find_available_target(targets::Vector) -> Union{Dict, Nothing}
-
-Find an available page target that isn't already being debugged.
-"""
-function find_available_target(targets)
-    for target in targets
-        if target["type"] == "page" && !get(target, "attached", false)
-            return target
-        end
-    end
-    return nothing
-end
-
-"""
-    connect_browser(endpoint::String="http://localhost:9222"; max_retries::Int=3) -> WSClient
-
-Connect to Chrome browser at the given debugging endpoint with enhanced error handling.
-"""
-function connect_browser(endpoint::String = "http://localhost:9222"; max_retries::Int = 3)
+function ensure_browser_available(
+        endpoint::String;
+        max_retries::Int = MAX_RETRIES,
+        retry_delay::Real = RETRY_DELAY,
+        verbose::Bool = false
+)
     for attempt in 1:max_retries
         try
-            @info "Connecting to browser (attempt $attempt/$max_retries)" endpoint
-
-            if !verify_browser_available(endpoint)
-                error("Chrome browser not available at $endpoint")
-            end
-
-            # Get available targets
-            response = HTTP.get("$endpoint/json/list")
-            targets = JSON3.read(response.body)
-
-            # Find an available target or create new one
-            page_target = find_available_target(targets)
-
-            if isnothing(page_target)
-                @debug "Creating new page target"
-                response = HTTP.put("$endpoint/json/new")
-                page_target = JSON3.read(response.body)
-            end
-
-            ws_url = page_target["webSocketDebuggerUrl"]
-            @debug "Creating WSClient" ws_url target_id=page_target["id"]
-
-            client = WSClient(ws_url)
-            connect!(client)
-
-            # Wait a bit for the connection to stabilize
-            sleep(0.5)
-
-            # Check if connection is still active
-            if !client.is_connected
-                error("WebSocket connection failed to establish")
-            end
-
-            @debug "Sending version check message"
-            # Verify connection is working with a simpler message first
-            result = send_cdp_message(
-                client, "Browser.getVersion", Dict(); increment_id = false)
-
-            if haskey(result, "result")
-                @info "Connected to browser" version=get(
-                    result["result"], "product", "unknown")
-                return client
-            else
-                error("Failed to verify browser connection")
-            end
-
-        catch e
-            @error "Connection attempt $attempt failed" exception=e
-            if attempt == max_retries
-                rethrow(e)
-            end
-            sleep(2.0)  # Wait before retrying
-        end
-    end
-    error("Failed to connect after $max_retries attempts")
-end
-
-"""
-    ensure_chrome_running(; max_attempts=5, delay=1.0)
-
-Checks if Chrome is running in debug mode on port 9222.
-Retries up to max_attempts times with specified delay between attempts.
-Returns true if Chrome is responding on the debug port.
-"""
-function ensure_chrome_running(;
-        endpoint = "http://localhost:9222", max_attempts = 5, delay = 1.0)
-    for attempt in 1:max_attempts
-        try
-            @debug "Checking Chrome debug port (attempt $attempt/$max_attempts)"
+            verbose && @debug "Checking Chrome debug port (attempt $attempt/$max_retries)"
             response = HTTP.get("$endpoint/json/version")
-            @info "Chrome is running" version=String(response.body)
-            return true
-        catch e
-            if attempt < max_attempts
-                @warn "Chrome not responding, retrying..." attempt=attempt exception=e
-                sleep(delay)
+            if response.status == 200
+                verbose && @info "Chrome is running" version=String(response.body)
+                return true
             else
-                @error "Chrome failed to respond after $max_attempts attempts" exception=e
+                error("Unexpected response status: $(response.status)")
+            end
+        catch e
+            if attempt < max_retries
+                verbose &&
+                    @warn "Chrome not responding, retrying..." attempt=attempt exception=e
+                sleep(retry_delay)
+            else
+                @error "Chrome failed to respond after $max_retries attempts" exception=e
                 return false
             end
         end
@@ -120,32 +47,84 @@ function ensure_chrome_running(;
 end
 
 """
-    get_ws_id(; endpoint = "http://localhost:9222")
+    get_or_create_page_target(endpoint::String; verbose::Bool = false)
 
-Gets the WebSocket debugger ID from Chrome's debug interface.
-Returns the ID string that can be used to construct the WebSocket URL.
+Retrieves an available page target or creates a new one if none are available.
+Returns the target dictionary containing details like `id` and `webSocketDebuggerUrl`.
 """
-function get_ws_id(; endpoint = "http://localhost:9222")
-    @debug "Requesting WebSocket debugger ID"
+function get_or_create_page_target(endpoint::String; verbose::Bool = false)
+    # Get available targets
     response = HTTP.get("$endpoint/json/list")
-    targets = JSON3.read(String(response.body))
+    targets = JSON3.read(response.body)
 
-    # Find a page target or create one
+    # Find an available page target
     for target in targets
         if target["type"] == "page" &&
-           !contains(get(target, "url", ""), "chrome-extension://")
-            ws_url = target["webSocketDebuggerUrl"]
-            id = split(ws_url, "/")[end]
-            @info "Retrieved WebSocket debugger ID" id=id
-            return id
+           !contains(get(target, "url", ""), "chrome-extension://") &&
+           !get(target, "attached", false)
+            verbose && @info "Found available page target" id=target["id"]
+            return target
         end
     end
 
     # No suitable page found, create a new one
-    @info "Creating new page target"
+    verbose && @info "Creating new page target"
     response = HTTP.get("$endpoint/json/new")
     target = JSON3.read(String(response.body))
-    id = target["id"]
-    @info "Created new page target" id=id
-    return id
+    verbose && @info "Created new page target" id=target["id"]
+    return target
+end
+
+"""
+    connect_browser(
+        endpoint::String = "http://localhost:9222";
+        max_retries::Int = MAX_RETRIES,
+        retry_delay::Real = RETRY_DELAY,
+        verbose::Bool = false
+)
+
+Connects to Chrome browser at the given debugging endpoint with enhanced error handling.
+
+# Arguments
+- `endpoint::String`: The URL of the Chrome debugging endpoint. Eg, `http://localhost:9222`.
+- `max_retries::Int`: The maximum number of retries to check for Chrome.
+- `retry_delay::Real`: The delay between retries in seconds.
+- `verbose::Bool`: Whether to print verbose debug information.
+"""
+function connect_browser(
+        endpoint::String = "http://localhost:9222";
+        max_retries::Int = MAX_RETRIES,
+        retry_delay::Real = RETRY_DELAY,
+        verbose::Bool = false
+)
+    client = with_retry(
+        max_retries = max_retries, retry_delay = retry_delay, verbose = verbose) do
+        verbose && @info "Connecting to browser" endpoint=endpoint
+
+        # Ensure Chrome is available
+        ensure_browser_available(endpoint; max_retries = 1, verbose = verbose) ||
+            error("Chrome browser not available at $endpoint")
+
+        # Get or create a page target
+        page_target = get_or_create_page_target(endpoint; verbose = verbose)
+
+        # Establish WebSocket connection
+        ws_url = page_target["webSocketDebuggerUrl"]
+        verbose && @debug "Creating WSClient" ws_url=ws_url target_id=page_target["id"]
+
+        client = WSClient(ws_url)
+        connect!(client; max_retries = 1, retry_delay = retry_delay, verbose = verbose)
+
+        # Verify the connection
+        result = send_cdp_message(
+            client, "Browser.getVersion", Dict(); increment_id = false)
+
+        haskey(result, "result") || error("Failed to verify browser connection")
+
+        verbose &&
+            @info "Connected to browser" version=get(result["result"], "product", "unknown")
+        return client
+    end
+
+    return client
 end

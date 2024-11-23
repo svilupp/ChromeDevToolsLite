@@ -1,50 +1,35 @@
 # Chrome DevTools Protocol (CDP)
 
-This section describes the core functionality for interacting with Chrome DevTools Protocol.
-
-## Core Functions
-
 ```@docs
-connect_browser
-send_cdp_message
-close_browser
+extract_cdp_result
+extract_element_result
 ```
 
-## WebSocket Connection
+## Usage
 
-The library uses WebSockets from HTTP.jl to establish connections to Chrome's debugging port (default: 9222).
+While ChromeDevToolsLite provides high-level functions for common operations, you can use `send_cdp_message` for direct CDP communication when needed:
 
 ```julia
 # Connect to Chrome's debugging port
 client = connect_browser()
 
-# Send CDP messages
-response = send_cdp_message(client, "Page.navigate", Dict{String, Any}("url" => "https://example.com"))
+try
+    # Use high-level functions when possible
+    goto(client, "https://example.com")
 
-# Close connection when done
-close_browser(client)
-```
-
-## Message Format
-
-CDP messages are sent as JSON with the following structure:
-```julia
-# Request format
-Dict{String, Any}(
-    "id" => message_id,
-    "method" => method_name,
-    "params" => parameters
-)
-
-# Response format
-Dict{String, Any}(
-    "id" => message_id,
-    "result" => result_data
-)
+    # For advanced CDP operations, use send_cdp_message
+    result = send_cdp_message(client, "DOM.getDocument", Dict())
+    root_node = extract_cdp_result(result)
+finally
+    close(client)
+end
 ```
 
 ## Error Handling
 
-The following errors may be thrown:
-- `WebSocketError`: Connection or message transmission issues
-- `JSONError`: Message parsing issues
+CDP operations may throw various errors. See [Error Types](@ref) in the Types section for details.
+
+Note: All CDP operations support verbose logging:
+```julia
+send_cdp_message(client, "DOM.getDocument", Dict(), verbose=true)
+```

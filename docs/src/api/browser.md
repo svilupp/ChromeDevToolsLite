@@ -2,8 +2,6 @@
 
 ```@docs
 connect_browser
-send_cdp_message
-close_browser
 ```
 
 ## Examples
@@ -13,23 +11,30 @@ close_browser
 client = connect_browser()
 
 try
-    # Navigate to a website using CDP message
-    send_cdp_message(client, "Page.navigate", Dict("url" => "https://example.com"))
+    # Navigate to a website using high-level function
+    goto(client, "https://example.com")
 
-    # Evaluate JavaScript
-    result = send_cdp_message(client, "Runtime.evaluate",
-                            Dict("expression" => "document.title"))
+    # Get page content
+    html_content = content(client)
 
     # Take screenshot
-    screenshot = send_cdp_message(client, "Page.captureScreenshot", Dict())
+    screenshot(client)
 finally
-    close_browser(client)
+    close(client)
 end
 ```
 
 ## Error Handling
 
-The browser operations can throw the following errors:
-- `WebSocketError`: When there are issues with the WebSocket connection
-- `JSONError`: When there are issues parsing CDP messages
-```
+Browser operations can throw various exceptions. See [Error Types](@ref) in the Types section for details.
+
+## Usage Notes
+- Ensure Chrome is running in debug mode before connecting
+- Always close the connection when done
+- Use verbose mode for debugging connection issues
+
+## Configuration
+
+The browser connection can be configured with:
+- `endpoint`: The Chrome DevTools Protocol endpoint (default: "http://localhost:9222")
+- `verbose`: Enable detailed logging (default: false)
