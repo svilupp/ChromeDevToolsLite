@@ -38,7 +38,7 @@ end
 
         # Test Chrome setup with proper syntax
         if !setup_success
-            @test false "Chrome setup failed after 3 attempts"
+            @test setup_success == true "Chrome setup failed after 3 attempts"
         else
             @testset "Basic Functionality" begin
                 include("basic_test.jl")
