@@ -1,31 +1,4 @@
 """
-    ElementNotFoundError(msg)
-
-Error thrown when an element cannot be found on the page using the specified selector.
-"""
-struct ElementNotFoundError <: Exception
-    msg::String
-end
-
-"""
-    NavigationError(msg)
-
-Error thrown when page navigation fails or times out.
-"""
-struct NavigationError <: Exception
-    msg::String
-end
-
-"""
-    EvaluationError(msg)
-
-Error thrown when JavaScript evaluation fails.
-"""
-struct EvaluationError <: Exception
-    msg::String
-end
-
-"""
     extract_cdp_result(response::Dict, path::Vector{String}=["result", "result", "value"])
 
 Extract values from CDP responses with configurable path traversal.
