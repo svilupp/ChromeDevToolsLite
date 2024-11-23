@@ -75,14 +75,19 @@ end
 function setup_test()
     @debug "Setting up test environment"
     setup_chrome(; endpoint = ENDPOINT)
-    sleep(0.5)  # Give Chrome time to stabilize
+    sleep(2.0)  # Increased sleep time to ensure Chrome is fully ready
 
-    # Ensure Chrome is ready
-    @assert ensure_browser_available(ENDPOINT; max_retries = 3, retry_delay = 2.0)
+    # More robust browser availability check
+    for _ in 1:3
+        if ensure_browser_available(ENDPOINT; max_retries = 3, retry_delay = 2.0)
+            client = connect_browser(ENDPOINT)
+            @debug "Browser connection established"
+            return client
+        end
+        sleep(1.0)
+    end
 
-    # Connect with retry
-    client = connect_browser(ENDPOINT)
-    return client
+    error("Failed to establish browser connection after multiple attempts")
 end
 
 function teardown_test(client)
