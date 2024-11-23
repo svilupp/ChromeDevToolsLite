@@ -1,8 +1,17 @@
 # Utilities
 
-## Base Operations
+## Core Functions
 
-The package implements several Base operations for its core types:
+```@docs
+ensure_chrome_running
+get_ws_id
+is_connected
+handle_event
+try_connect
+connect!
+```
+
+## Base Operations
 
 ```@docs
 Base.close(::WSClient)
@@ -26,25 +35,33 @@ finally
 end
 ```
 
-### Memory Management Tips
-- Always close the client connection when done
-- Use shorter timeouts for faster failure detection
-
 ### Connection Management
 ```julia
-# Robust connection handling
+# Robust connection handling with verbose logging
 try
-    client = connect_browser()
+    client = connect_browser(verbose=true)
     if client === nothing
         @error "Failed to create browser connection"
         return nothing
     end
 
+    # Ensure Chrome is running
+    ensure_chrome_running()
+
+    # Check connection status
+    if !is_connected(client.ws)
+        client = try_connect(client)
+    end
+
     # Your browser operations here
 catch e
     @warn "Browser connection failed" exception=e
-    # Implement retry logic here
 finally
     client !== nothing && close(client)
 end
 ```
+
+### Memory Management Tips
+- Always close the client connection when done
+- Use shorter timeouts for faster failure detection
+- Enable verbose logging during development for better debugging
