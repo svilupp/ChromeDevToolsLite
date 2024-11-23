@@ -1,7 +1,15 @@
 """
     goto(client::WSClient, url::String; verbose::Bool=false)
 
-Navigate to the specified URL.
+Navigate to the specified URL and wait for page load.
+
+# Arguments
+- `client::WSClient`: The WebSocket client to use
+- `url::String`: The URL to navigate to
+- `verbose::Bool`: Enable verbose logging (default: false)
+
+# Throws
+- `NavigationError`: If navigation fails or times out
 """
 function goto(client::WSClient, url::String; verbose::Bool=false)
     verbose && @debug "Navigating to URL" url=url
@@ -21,7 +29,18 @@ end
 """
     evaluate(client::WSClient, expression::String; verbose::Bool=false) -> Any
 
-Evaluate JavaScript in the page context.
+Evaluate JavaScript in the page context and return the result.
+
+# Arguments
+- `client::WSClient`: The WebSocket client to use
+- `expression::String`: JavaScript expression to evaluate
+- `verbose::Bool`: Enable verbose logging (default: false)
+
+# Returns
+- `Any`: The result of the JavaScript evaluation, or nothing if no value returned
+
+# Throws
+- `EvaluationError`: If JavaScript evaluation fails
 """
 function evaluate(client::WSClient, expression::String; verbose::Bool=false)
     verbose && @debug "Evaluating JavaScript" expression=expression
@@ -41,7 +60,14 @@ end
 """
     screenshot(client::WSClient; verbose::Bool=false) -> String
 
-Take a screenshot of the current page, returns base64 encoded string.
+Take a screenshot of the current page.
+
+# Arguments
+- `client::WSClient`: The WebSocket client to use
+- `verbose::Bool`: Enable verbose logging (default: false)
+
+# Returns
+- `String`: Base64 encoded string of the screenshot, or nothing if capture fails
 """
 function screenshot(client::WSClient; verbose::Bool=false)
     verbose && @debug "Taking page screenshot"
@@ -59,7 +85,14 @@ end
 """
     content(client::WSClient; verbose::Bool=false) -> String
 
-Get the HTML content of the page.
+Get the HTML content of the current page.
+
+# Arguments
+- `client::WSClient`: The WebSocket client to use
+- `verbose::Bool`: Enable verbose logging (default: false)
+
+# Returns
+- `String`: The HTML content of the page
 """
 function content(client::WSClient; verbose::Bool=false)
     evaluate(client, "document.documentElement.outerHTML"; verbose=verbose)
