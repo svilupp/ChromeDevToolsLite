@@ -1,46 +1,50 @@
-# CDP Implementation
+# Chrome DevTools Protocol (CDP)
+
+This section describes the core functionality for interacting with Chrome DevTools Protocol.
+
+## Core Functions
 
 ```@docs
-AbstractCDPMessage
-CDPEvent
-CDPRequest
-CDPResponse
-CDPSession
-AbstractWebSocketConnection
-WebSocketConnection
+connect_browser
+send_cdp_message
+close_browser
 ```
 
-## Session Methods
+## WebSocket Connection
 
-```@docs
-CDPSession(::AbstractWebSocketConnection)
-send_message
-create_cdp_message
-parse_cdp_message
-handle_cdp_error
-get_next_message_id
-add_event_listener
-remove_event_listener
-Base.close(::CDPSession)
+The library uses WebSockets from HTTP.jl to establish connections to Chrome's debugging port (default: 9222).
+
+```julia
+# Connect to Chrome's debugging port
+client = connect_browser()
+
+# Send CDP messages
+response = send_cdp_message(client, "Page.navigate", Dict{String, Any}("url" => "https://example.com"))
+
+# Close connection when done
+close_browser(client)
 ```
 
-## WebSocket Methods
+## Message Format
 
-```@docs
-Base.write(::WebSocketConnection, ::String)
-Base.read(::WebSocketConnection)
-Base.isopen(::WebSocketConnection)
-Base.close(::WebSocketConnection)
+CDP messages are sent as JSON with the following structure:
+```julia
+# Request format
+Dict{String, Any}(
+    "id" => message_id,
+    "method" => method_name,
+    "params" => parameters
+)
+
+# Response format
+Dict{String, Any}(
+    "id" => message_id,
+    "result" => result_data
+)
 ```
 
-## Error Types
+## Error Handling
 
-```@docs
-ChromeDevToolsError
-```
-
-## Utilities
-
-```@docs
-retry_with_timeout
-```
+The following errors may be thrown:
+- `WebSocketError`: Connection or message transmission issues
+- `JSONError`: Message parsing issues
