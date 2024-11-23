@@ -11,7 +11,7 @@ Navigate to the specified URL and wait for page load.
 # Throws
 - `NavigationError`: If navigation fails or times out
 """
-function goto(client::WSClient, url::String; verbose::Bool=false)
+function goto(client::WSClient, url::String; verbose::Bool = false)
     verbose && @debug "Navigating to URL" url=url
     # Enable page domain first
     send_cdp_message(client, "Page.enable", Dict{String, Any}())
@@ -86,19 +86,15 @@ Evaluate JavaScript in the page context and return the result.
 # Throws
 - `EvaluationError`: If JavaScript evaluation fails
 """
-function evaluate(client::WSClient, expression::String; verbose::Bool=false)
+function evaluate(client::WSClient, expression::String; verbose::Bool = false)
     verbose && @debug "Evaluating JavaScript" expression=expression
     response = send_cdp_message(
         client, "Runtime.evaluate", Dict{String, Any}("expression" => expression))
-    if response isa Dict &&
-       haskey(response, "result") &&
-       haskey(response["result"], "result") &&
-       haskey(response["result"]["result"], "value")
-        verbose && @debug "Evaluation successful" result=response["result"]["result"]["value"]
-        return response["result"]["result"]["value"]
-    end
-    verbose && @warn "Evaluation returned no value"
-    return nothing
+
+    result = extract_element_result(response)
+    verbose && isnothing(result) && @warn "Evaluation returned no value"
+
+    return result
 end
 
 """
@@ -113,7 +109,7 @@ Take a screenshot of the current page.
 # Returns
 - `String`: Base64 encoded string of the screenshot, or nothing if capture fails
 """
-function screenshot(client::WSClient; verbose::Bool=false)
+function screenshot(client::WSClient; verbose::Bool = false)
     verbose && @debug "Taking page screenshot"
     # Enable page domain if not already enabled
     send_cdp_message(client, "Page.enable", Dict{String, Any}())
@@ -138,8 +134,8 @@ Get the HTML content of the current page.
 # Returns
 - `String`: The HTML content of the page
 """
-function content(client::WSClient; verbose::Bool=false)
-    evaluate(client, "document.documentElement.outerHTML"; verbose=verbose)
+function content(client::WSClient; verbose::Bool = false)
+    evaluate(client, "document.documentElement.outerHTML"; verbose = verbose)
 end
 
 """

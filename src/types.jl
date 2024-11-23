@@ -25,69 +25,15 @@ mutable struct WSClient
 end
 
 """
-    ElementNotFoundError(msg::String)
+    ElementHandle
 
-Exception thrown when an element cannot be found in the DOM.
-
-# Fields
-- `msg::String`: Error message describing why the element was not found
+Represents a handle to a DOM element in the browser.
 """
-struct ElementNotFoundError <: Exception
-    msg::String
+struct ElementHandle
+    client::WSClient
+    selector::String
+    verbose::Bool
+    function ElementHandle(client::WSClient, selector::String; verbose::Bool = false)
+        new(client, selector, verbose)
+    end
 end
-
-"""
-    NavigationError(msg::String)
-
-Exception thrown when page navigation fails.
-
-# Fields
-- `msg::String`: Error message describing the navigation failure
-"""
-struct NavigationError <: Exception
-    msg::String
-end
-
-"""
-    EvaluationError(msg::String)
-
-Exception thrown when JavaScript evaluation fails.
-
-# Fields
-- `msg::String`: Error message describing the evaluation failure
-"""
-struct EvaluationError <: Exception
-    msg::String
-end
-
-"""
-    TimeoutError(msg::String)
-
-Exception thrown when an operation exceeds its timeout.
-
-# Fields
-- `msg::String`: Error message describing what operation timed out
-"""
-struct TimeoutError <: Exception
-    msg::String
-end
-
-"""
-    ConnectionError(msg::String)
-
-Exception thrown when browser connection fails.
-
-# Fields
-- `msg::String`: Error message describing the connection failure
-"""
-struct ConnectionError <: Exception
-    msg::String
-end
-
-# Base operations
-"""
-    Base.show(io::IO, client::WSClient)
-
-Display a WSClient instance, showing its connection status.
-"""
-Base.show(io::IO, client::WSClient) = print(io, "WSClient(connected=$(client.is_connected))")

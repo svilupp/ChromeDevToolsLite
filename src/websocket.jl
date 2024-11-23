@@ -46,89 +46,76 @@ function start_message_handler(client::WSClient)
 end
 
 """
-    try_connect(client::WSClient) -> WSClient
+    try_connect(client::WSClient; max_retries::Int = MAX_RETRIES,
+        retry_delay::Real = RETRY_DELAY, verbose::Bool = false)
 
 Attempt to establish a WebSocket connection with retry logic and timeout.
 """
-function try_connect(client::WSClient)
-    for attempt in 1:MAX_RECONNECT_ATTEMPTS
-        try
-            @debug "Attempting connection" attempt=attempt url=client.ws_url
+function try_connect(client::WSClient; max_retries::Int = MAX_RETRIES,
+        retry_delay::Real = RETRY_DELAY, verbose::Bool = false)
+    with_retry(max_retries = max_retries, retry_delay = retry_delay, verbose = verbose) do
+        verbose && @debug "Attempting WebSocket connection" url=client.ws_url
 
-            # Create channels for connection status
-            connection_status = Channel{Union{WebSocket, Exception}}(1)
+        # Channel for connection status
+        connection_status = Channel{Union{WebSocket, Exception}}(1)
 
-            # Create a connection task
-            @async begin
-                try
-                    WebSockets.open(client.ws_url; suppress_close_error = true) do ws
-                        client.ws = ws
-                        client.is_connected = true
-                        put!(connection_status, ws)
-
-                        # Keep connection alive until explicitly closed
-                        while client.is_connected && !WebSockets.isclosed(ws)
-                            sleep(0.1)
-                        end
+        # Connection task
+        @async begin
+            try
+                WebSockets.open(client.ws_url; suppress_close_error = true) do ws
+                    client.ws = ws
+                    client.is_connected = true
+                    put!(connection_status, ws)
+                    # Keep connection alive
+                    while client.is_connected && !WebSockets.isclosed(ws)
+                        sleep(0.1)
                     end
-                catch e
-                    put!(connection_status, e)
                 end
+            catch e
+                put!(connection_status, e)
             end
-
-            # Wait for either connection success or timeout
-            @async begin
-                sleep(CONNECTION_TIMEOUT)
-                if !isready(connection_status)
-                    put!(connection_status,
-                        TimeoutError("Connection timeout after $(CONNECTION_TIMEOUT) seconds"))
-                end
-            end
-
-            # Wait for result
-            result = take!(connection_status)
-
-            if isa(result, Exception)
-                throw(result)
-            end
-
-            @debug "Connection established" attempt=attempt
-            return client
-
-        catch e
-            @warn "Connection attempt $attempt failed" exception=e
-            if attempt == MAX_RECONNECT_ATTEMPTS
-                error("Failed after $MAX_RECONNECT_ATTEMPTS attempts: $e")
-            end
-            sleep(RECONNECT_DELAY * attempt)
         end
+
+        # Timeout task
+        @async begin
+            sleep(CONNECTION_TIMEOUT)
+            if !isready(connection_status)
+                put!(connection_status,
+                    TimeoutError("Connection timeout after $(CONNECTION_TIMEOUT) seconds"))
+            end
+        end
+
+        # Wait for connection result
+        result = take!(connection_status)
+
+        isa(result, Exception) && throw(result)
+
+        verbose && @debug "WebSocket connection established" url=client.ws_url
+        return client
     end
-    error("Failed to establish WebSocket connection")
 end
 
 """
-    connect!(client::WSClient) -> WSClient
+    connect!(client::WSClient; max_retries::Int = MAX_RETRIES,
+        retry_delay::Real = RETRY_DELAY, verbose::Bool = false)
 
 Connect to Chrome DevTools Protocol WebSocket endpoint.
-Establishes a WebSocket connection and starts the message handler.
+Returns the connected client.
 
 # Arguments
-- `client::WSClient`: The WebSocket client to connect
-
-# Returns
-- `WSClient`: The connected client instance
-
-# Throws
-- `TimeoutError`: If connection times out
-- `ConnectionError`: If connection fails after max retries
+- `max_retries::Int`: The maximum number of retries to establish the connection.
+- `retry_delay::Real`: The delay between retries in seconds.
+- `verbose::Bool`: Whether to print verbose debug information.
 """
-function connect!(client::WSClient)
+function connect!(client::WSClient; max_retries::Int = MAX_RETRIES,
+        retry_delay::Real = RETRY_DELAY, verbose::Bool = false)
     if client.is_connected
-        @debug "Client already connected"
+        verbose && @debug "Client already connected"
         return client
     end
 
-    try_connect(client)
+    try_connect(
+        client; max_retries = max_retries, retry_delay = retry_delay, verbose = verbose)
     start_message_handler(client)
     return client
 end

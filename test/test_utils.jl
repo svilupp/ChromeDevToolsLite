@@ -1,10 +1,10 @@
 """
-    setup_chrome(; endpoint = "http://localhost:9222")
+    setup_chrome(; endpoint = ENDPOINT)
 
 Sets up Chrome for testing. On Linux systems in CI, installs and starts Chrome if needed.
 Otherwise, verifies Chrome is running on port 9222.
 """
-function setup_chrome(; endpoint = "http://localhost:9222")
+function setup_chrome(; endpoint = ENDPOINT)
     # First check if Chrome is already running on port 9222
     @info "Checking if Chrome is already running on port 9222..."
     try
@@ -57,38 +57,6 @@ function setup_chrome(; endpoint = "http://localhost:9222")
             stderr = devnull
         )
         process = run(cmd, wait = false)
-
-        # More robust startup check
-        max_retries = 10  # Increased retries
-        retry_delay = 3   # Seconds between retries
-        for attempt in 1:max_retries
-            @info "Checking Chrome availability (attempt $attempt/$max_retries)..."
-            try
-                # First check HTTP endpoint
-                response = HTTP.get(
-                    "$endpoint/json/version", retry = false, readtimeout = 5)
-                version_info = String(response.body)
-
-                # Then verify WebSocket endpoint
-                endpoints = HTTP.get("$endpoint/json/list", retry = false, readtimeout = 5)
-                if occursin("webSocketDebuggerUrl", String(endpoints.body))
-                    @info "Chrome started successfully" attempt version_info
-                    return true
-                else
-                    @warn "Chrome started but WebSocket endpoint not ready"
-                end
-            catch e
-                if attempt == max_retries
-                    @error "Failed to start Chrome after $max_retries attempts" exception=e
-                    error("Chrome failed to start properly")
-                else
-                    @debug "Chrome not ready yet (attempt $attempt/$max_retries)" exception=e
-                    sleep(retry_delay)
-                end
-            end
-        end
-
-        error("Failed to start Chrome in debug mode after $max_retries attempts")
     end
 end
 
@@ -104,51 +72,23 @@ function cleanup()
     end
 end
 
-"""
-    setup_test()
-
-Sets up the test environment and returns a connected client.
-"""
 function setup_test()
-    setup_chrome()
+    @debug "Setting up test environment"
+    setup_chrome(; endpoint = ENDPOINT)
+    sleep(0.5)  # Give Chrome time to stabilize
+
+    # Ensure Chrome is ready
+    @assert ensure_browser_available(ENDPOINT; max_retries = 3, retry_delay = 2.0)
 
     # Connect with retry
-    for attempt in 1:3
-        try
-            return connect_browser("http://localhost:9222")
-        catch e
-            if attempt == 3
-                rethrow(e)
-            end
-            sleep(1.0)
-        end
-    end
+    client = connect_browser(ENDPOINT)
+    return client
 end
 
-"""
-    teardown_test(client)
-
-Cleans up the test environment and closes the client connection.
-"""
 function teardown_test(client)
     if client !== nothing
         close(client)
     end
-    cleanup()
+    @debug "Tearing down test environment"
     sleep(0.5)  # Give Chrome time to clean up
-end
-
-"""
-    extract_element_result(response)
-
-Helper function to extract element result from CDP response.
-"""
-function extract_element_result(response)
-    if response isa Dict &&
-       haskey(response, "result") &&
-       haskey(response["result"], "result") &&
-       haskey(response["result"]["result"], "value")
-        return response["result"]["result"]["value"]
-    end
-    return nothing
 end
