@@ -16,16 +16,8 @@ makedocs(;
     pages=[
         "Home" => "index.md",
         "Getting Started" => "getting_started.md",
-        "API Reference" => [
-            "Browser" => "api/browser.md",
-            "Page" => "api/page.md",
-            "Element" => "api/element.md",
-            "CDP" => "api/cdp.md",
-            "Utilities" => "api/utilities.md",
-            "Error Types" => "error_types.md"
-        ],
+        "API Reference" => "api/api.md",
         "Examples" => "examples.md",
-        "Contributing" => "contributing.md"
     ],
 )
 

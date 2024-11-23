@@ -10,7 +10,7 @@ ChromeDevToolsLite.jl is a minimal Julia package for browser automation using th
 
 - Direct WebSocket connection to Chrome DevTools Protocol
 - Basic page navigation and JavaScript evaluation
-- Element interaction (click, type)
+- DOM manipulation via JavaScript
 - Screenshot capabilities
 - Minimal overhead and dependencies
 
@@ -29,9 +29,11 @@ try
     # Get page content
     page_content = content(client)
 
-    # Find and interact with elements
-    element = ElementHandle(client, "#submit-button")
-    click(element)
+    # Find and interact with elements using JavaScript
+    evaluate(client, """
+        const button = document.querySelector('#submit-button');
+        if (button) button.click();
+    """)
 
     # Take a screenshot
     screenshot(client)

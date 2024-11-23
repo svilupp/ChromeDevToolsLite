@@ -17,22 +17,25 @@ using ChromeDevToolsLite
 # Connect to browser (enable verbose mode for debugging)
 client = connect_browser(verbose=true)
 
-# Navigate to a website
-goto(client, "https://example.com")
+try
+    # Navigate to a website
+    goto(client, "https://example.com")
 
-# Find and interact with elements
-element = ElementHandle(client, "#submit-button", verbose=true)
-click(element, verbose=true)
+    # Find and interact with elements using JavaScript
+    evaluate(client, """
+        const button = document.querySelector('#submit-button');
+        if (button) button.click();
 
-# Fill out a form
-input = ElementHandle(client, "#search", verbose=true)
-type_text(input, "search query", verbose=true)
+        const searchInput = document.querySelector('#search');
+        if (searchInput) searchInput.value = 'search query';
+    """)
 
-# Take a screenshot
-screenshot(client, verbose=true)
-
-# Clean up
-close(client)
+    # Take a screenshot
+    screenshot(client, verbose=true)
+finally
+    # Clean up
+    close(client)
+end
 ```
 
 ## Key Concepts
@@ -40,25 +43,24 @@ close(client)
 ### Browser Management
 - A WebSocket connection to Chrome DevTools Protocol
 - Each connection can control a Chrome browser instance
-- Supports page navigation, element interaction, and JavaScript evaluation
+- Supports page navigation, JavaScript evaluation, and screenshots
 
 ### Page Navigation
 - Use `goto` to navigate to URLs
-- Use `ElementHandle` to find elements
+- Use `evaluate` to run JavaScript code
 - Use `content` to retrieve the page's HTML
 
-### Element Interaction
-- Find elements using CSS selectors with `ElementHandle`
-- Interact using methods like `click`, `type_text`
-- Check element state with `is_visible`, `get_text`
-- Enable verbose mode for debugging: `ElementHandle(client, selector, verbose=true)`
+### DOM Interaction
+- Interact with elements using JavaScript via `evaluate`
+- Query elements using standard CSS selectors
+- Modify element properties and trigger events
+- Enable verbose mode for debugging output
 
 ### Debugging
 - Use verbose flag for detailed logging:
   ```julia
   client = connect_browser(verbose=true)
-  element = ElementHandle(client, "#button", verbose=true)
-  click(element, verbose=true)
+  result = evaluate(client, "document.querySelector('#button').click()")
   ```
 - Check operation results and error messages
 - Monitor browser console output
@@ -67,11 +69,11 @@ close(client)
 The package includes error handling for:
 - Connection issues
 - Navigation failures
-- Element interaction failures
+- JavaScript evaluation errors
 
 ## Best Practices
 
-1. Always close resources:
+1. Always use try-finally for cleanup:
 ```julia
 try
     # Your code here
@@ -84,34 +86,39 @@ end
 ```julia
 # Enable verbose mode for detailed logging
 client = connect_browser(verbose=true)
-element = ElementHandle(client, "#slow-element", verbose=true)
-if !isnothing(element)
-    click(element, verbose=true)
-end
+result = evaluate(client, """
+    const element = document.querySelector('#slow-element');
+    if (element) element.click();
+""", verbose=true)
 ```
 
 3. Handle errors gracefully:
 ```julia
 try
-    element = ElementHandle(client, "#maybe-exists", verbose=true)
-    if !isnothing(element)
-        click(element, verbose=true)
-    end
+    result = evaluate(client, """
+        const element = document.querySelector('#maybe-exists');
+        return element ? element.click() : null;
+    """)
 catch e
-    @warn "Element not found or interaction failed" exception=e
+    @warn "Element interaction failed" exception=e
     rethrow(e)
 end
 ```
 
 4. Working with Multiple Elements:
 ```julia
-# Find multiple elements
-items = [ElementHandle(client, ".item", verbose=true) for _ in 1:3]
-for item in items
-    if is_visible(item)
-        text = get_text(item)
-        testid = get_attribute(item, "data-testid")
-        println("Item $testid: $text")
+# Find and process multiple elements
+elements_data = evaluate(client, """
+    const items = document.querySelectorAll('.item');
+    return Array.from(items).map(item => ({
+        visible: window.getComputedStyle(item).display !== 'none',
+        text: item.textContent,
+        testid: item.getAttribute('data-testid')
+    }));
+""")
+for item in JSON.parse(elements_data)
+    if item["visible"]
+        println("Item $(item["testid"]): $(item["text"])")
     end
 end
 ```
@@ -119,27 +126,29 @@ end
 5. Form Interactions:
 ```julia
 # Fill out a form
-name_input = ElementHandle(client, "#name", verbose=true)
-type_text(name_input, "John Doe", verbose=true)
+evaluate(client, """
+    const nameInput = document.querySelector('#name');
+    if (nameInput) nameInput.value = 'John Doe';
 
-color_select = ElementHandle(client, "#color", verbose=true)
-select_option(color_select, "blue", verbose=true)
+    const colorSelect = document.querySelector('#color');
+    if (colorSelect) colorSelect.value = 'blue';
 
-submit_button = ElementHandle(client, "button[type='submit']", verbose=true)
-click(submit_button, verbose=true)
+    const submitButton = document.querySelector('button[type='submit']');
+    if (submitButton) submitButton.click();
+""")
 
 # Verify submission
-result = ElementHandle(client, "#result", verbose=true)
-@assert contains(get_text(result), "John Doe")
+result = evaluate(client, """
+    const resultElement = document.querySelector('#result');
+    return resultElement ? resultElement.textContent : '';
+""")
+@assert contains(result, "John Doe")
 ```
 
 6. Screenshots:
 ```julia
-# From examples/16_screenshot_comprehensive_test.jl
 # Full page screenshot
 screenshot(client, verbose=true)
 
-# Element-specific screenshot
-header = ElementHandle(client, "header", verbose=true)
-screenshot(header, verbose=true)
+# Element-specific screenshot (not currently supported)
 ```

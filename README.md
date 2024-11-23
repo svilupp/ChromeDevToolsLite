@@ -20,22 +20,23 @@ A lightweight Julia package for browser automation using the Chrome DevTools Pro
 ## Features
 
 - **Browser Automation**
-  - CDP-based browser control
-  - Isolated browser contexts
-  - Multiple page management
-  - Configurable timeouts
+  - Simple CDP-based browser control
+  - Connect to existing Chrome/Chromium sessions
+  - Automatic browser cleanup with try-finally blocks
+  - Verbose mode for debugging
 
 - **Page Operations**
-  - Navigation and URL handling
-  - Screenshot capture
-  - HTML content access
-  - JavaScript evaluation
+  - Easy page navigation with `goto`
+  - Screenshot capture with `screenshot`
+  - Full HTML content access with `content`
+  - Versatile JavaScript evaluation with `evaluate`
+  - Paragraph and text extraction
 
 - **DOM Interaction**
-  - Element selection and querying
-  - Form handling (input, checkboxes, radio buttons)
-  - Click and type operations
-  - Element visibility checking
+  - Form input field manipulation
+  - Radio button and checkbox handling
+  - Text area content management
+  - Multiple element selection and verification
 
 ## Installation
 
@@ -58,24 +59,27 @@ See [Chrome Setup Guide](#chrome-setup-guide) at the end of this README for deta
 ```julia
 using ChromeDevToolsLite
 
-# 1. Start Chrome with remote debugging enabled (see Chrome Setup Guide below). Assumed to be started on port 9222.
-# 2. Connect to the browser
-client = connect_browser("http://localhost:9222") # your chrome debugging connection
+# Connect to the browser (assumes Chrome is running with remote debugging on port 9222)
+client = connect_browser()
 
-# 3. Basic automation example
 try
     # Navigate to a page
-    send_cdp_message(client, "Page.navigate", Dict("url" => "https://example.com"))
-    
+    goto(client, "https://example.com")
+
+    # Get page content
+    html_content = content(client)
+    println("Page title: ", evaluate(client, "document.title"))
+
     # Take a screenshot
-    screenshot = send_cdp_message(client, "Page.captureScreenshot")
-    write("screenshot.png", base64decode(screenshot["result"]["data"]))
-    
-    # Find and click a button
-    button = ElementHandle(client, "#submit-button")
-    click(button)
+    screenshot(client)
+
+    # Interact with elements using JavaScript
+    evaluate(client, """
+        document.querySelector('button').click();
+        document.querySelector('input').value = 'Hello World';
+    """)
 finally
-    close_browser(client)
+    close(client)
 end
 ```
 
@@ -85,27 +89,29 @@ end
 using ChromeDevToolsLite
 using Base64
 
-function ask_llm_about_page(screenshot_path)
+function ask_llm_about_page(screenshot_path, page_info)
     # Your LLM integration code here
     # eg., OpenAI.create_chat(...) or Anthropic.messages(...)
 end
 
 client = connect_browser()
 try
-    # Navigate to page
-    send_cdp_message(client, "Page.navigate", Dict("url" => "https://example.com"))
-    
-    # Capture screenshot
-    screenshot = send_cdp_message(client, "Page.captureScreenshot")
-    write("screenshot.png", base64decode(screenshot["result"]["data"]))
-    
+    # Navigate and wait for page load
+    goto(client, "https://example.com")
+
+    # Gather page information
+    screenshot(client)
+    page_info = Dict(
+        "title" => evaluate(client, "document.title"),
+        "content" => content(client),
+        "url" => evaluate(client, "window.location.href")
+    )
+
     # Ask LLM about the page
-    llm_response = ask_llm_about_page("screenshot.png")
-    
-    # Let LLM suggest next actions (with proper supervision!)
+    llm_response = ask_llm_about_page("screenshot.png", page_info)
     println("LLM suggests: ", llm_response)
 finally
-    close_browser(client)
+    close(client)
 end
 ```
 
@@ -113,56 +119,51 @@ end
 
 ### Common Issues and Solutions
 
-1. **Browser Connection Issues**
+1. **Browser Connection**
 ```julia
 # Ensure Chrome is running with debugging port
-# First, check if Chrome is available
-if !ensure_browser_available("http://localhost:9222")
+if !ensure_browser_available()
     error("Chrome not available. Start it with: chromium --remote-debugging-port=9222")
 end
 
-# Connect with retry mechanism
-client = connect_browser(; max_retries=3)
+# Connect with verbose mode for debugging
+client = connect_browser(verbose=true)
 ```
 
-2. **Connection Retries**
+2. **Page Navigation and Content**
 ```julia
-# Use ensure_chrome_running for automatic retry
-if !ensure_chrome_running(max_attempts=5, delay=1.0)
-    error("Failed to connect to Chrome after multiple attempts")
+# Use try-catch for navigation issues
+try
+    goto(client, "https://example.com")
+    page_content = content(client)
+catch e
+    println("Navigation failed: ", e)
 end
 ```
 
-3. **Element Interaction**
+3. **JavaScript Evaluation**
 ```julia
-# Check element visibility before interaction
-element = ElementHandle(client, "#my-element")
-if is_visible(element)
-    click(element)
-else
-    @warn "Element not visible or not found"
+# Handle JavaScript evaluation safely
+try
+    # Find and click a button
+    evaluate(client, "document.querySelector('button').click()")
+
+    # Get input value
+    value = evaluate(client, "document.querySelector('input').value")
+catch e
+    println("JavaScript evaluation failed: ", e)
 end
 ```
 
-4. **JavaScript Evaluation**
-```julia
-# Evaluate JavaScript with proper error handling
-result = send_cdp_message(client, "Runtime.evaluate",
-    Dict("expression" => "document.title",
-         "returnByValue" => true))
-if haskey(result, "result")
-    println("Result: ", result["result"]["value"])
-end
-```
-
-5. **Resource Cleanup**
+4. **Resource Cleanup**
 ```julia
 # Always use try-finally for proper cleanup
 client = connect_browser()
 try
-    # Your code here
+    goto(client, "https://example.com")
+    # Your automation code here
 finally
-    close_browser(client)
+    close(client)
 end
 ```
 
@@ -170,39 +171,60 @@ For more detailed examples and solutions, see the [examples/](examples/) directo
 
 ## Running Examples
 
-The package includes comprehensive example scripts in the `examples/` directory:
+The package includes five comprehensive example scripts in the `examples/` directory that demonstrate all key features:
 
-### Basic Operations
-- `00_browser_test.jl`: Browser setup and management
-- `01_page_navigation_test.jl`: Page navigation
-- `02_local_navigation_test.jl`: Local file handling
+### 1. Basic Connection (`1_basic_connection.jl`)
+- Browser connection and cleanup
+- Simple page navigation
+- Basic operations
 
-### DOM Interaction
-- `03_text_content_test.jl`: Text content extraction
-- `04_form_interaction_test.jl`: Form handling
-- `13_page_selectors_test.jl`: Element selectors
-- `14_evaluate_handle_test.jl`: JavaScript evaluation
+### 2. Page Operations (`2_page_operations.jl`)
+- Navigation and content extraction
+- JavaScript evaluation
+- Screenshot capture
+- Content manipulation
 
-### Advanced Features
-- `18_screenshot_comprehensive_test.jl`: Screenshot capabilities
-- `19_checkbox_comprehensive_test.jl`: Checkbox interactions
-- `20_timeout_comprehensive_test.jl`: Timeout handling
-- `21_error_handling_comprehensive_test.jl`: Error management
+### 3. Element Interactions (`3_element_interactions.jl`)
+- Finding elements on the page
+- Clicking and form filling
+- Element property extraction
+
+### 4. Form Automation (`4_form_automation.jl`)
+- Complex form handling with multiple input types
+- Batch form field updates
+- JSON-based form state verification
+- Form submission and navigation tracking
+- Multi-line text handling
+
+### 5. Advanced Automation (`5_advanced_automation.jl`)
+- Dynamic DOM manipulation and styling
+- Complex JavaScript execution
+- JSON-based content verification
+- Visual result capture with screenshots
 
 To run an example:
 
 ```julia
-julia --project=. examples/01_page_navigation_test.jl
+julia --project=. examples/1_basic_connection.jl
 ```
 
 ## Local Development
 
 1. Clone the repository
-2. Start Chrome/Chromium with remote debugging:
+2. Install the package in development mode:
+   ```julia
+   using Pkg; Pkg.develop(path=".")
+   ```
+3. Start Chrome/Chromium with remote debugging:
    ```bash
+   chromium --remote-debugging-port=9222
+   # Or for headless testing:
    chromium --remote-debugging-port=9222 --headless
    ```
-3. Run the examples to verify functionality
+4. Run the examples to verify functionality:
+   ```julia
+   julia --project=. examples/1_basic_connection.jl
+   ```
 
 ## License
 

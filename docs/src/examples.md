@@ -1,103 +1,79 @@
 # Examples
 
-This guide showcases practical examples from our test suite demonstrating various ChromeDevToolsLite features.
+This guide showcases practical examples demonstrating ChromeDevToolsLite features. All examples can be found in the `examples/` directory.
 
-## Browser Connection
+## Basic Connection
 ```julia
-# Connect to Chrome DevTools with verbose logging for debugging
+using ChromeDevToolsLite
+
+println("Starting basic connection example...")
 client = connect_browser(verbose=true)
 
 try
+    # Basic navigation
     goto(client, "https://example.com")
-    content_result = content(client)
-    @assert contains(content_result, "<title>Example Domain</title>")
+
+    # Get page title using JavaScript
+    title = evaluate(client, "document.title")
+    println("Page title: $title")
 finally
     close(client)
 end
 ```
 
-## Form Filling
+## Page Operations
 ```julia
-# Fill out a complex form with verbose logging
-form_data = Dict(
-    "#name" => "John Doe",
-    "#email" => "john@example.com",
-    "#country" => "US",
-    "#terms" => true
-)
+# Get and display page content
+html_content = content(client)
+println("First 100 chars of content: ", html_content[1:min(100, length(html_content))])
 
-for (selector, value) in form_data
-    element = ElementHandle(client, selector, verbose=true)
-    if value isa Bool
-        value ? check(element, verbose=true) : uncheck(element, verbose=true)
-    elseif selector == "#country"
-        select_option(element, value, verbose=true)
-    else
-        type_text(element, value, verbose=true)
-    end
-end
-```
-
-## Working with Elements
-```julia
-# Find and interact with elements
-element = ElementHandle(client, "#submit-button", verbose=true)
-click(element, verbose=true)
-
-# Find and interact with multiple elements
-items = [ElementHandle(client, item, verbose=true) for item in ["#item1", "#item2", "#item3"]]
-for element in items
-    if is_visible(element)
-        text = get_text(element)
-        testid = get_attribute(element, "data-testid")
-        println("Item $testid: $text")
-    end
-end
-```
-
-## Dynamic Content Handling
-```julia
-# Check element visibility and interact with verbose logging
-element = ElementHandle(client, "#dynamic-content", verbose=true)
-if !isnothing(element) && is_visible(element)
-    click(element, verbose=true)
-end
-```
-
-## Taking Screenshots
-```julia
-# Full page screenshot
+# Take a screenshot
 screenshot(client, verbose=true)
-
-# Element-specific screenshot
-special_item = ElementHandle(client, ".item.special", verbose=true)
-screenshot(special_item, verbose=true)
+println("Screenshot saved (check current directory for 'screenshot.png')")
 ```
 
-## Element Interaction and Form Handling
+## Element Interactions
 ```julia
-# Enable verbose mode for detailed operation logging
-checkbox = ElementHandle(client, "#notifications", verbose=true)
-check(checkbox, verbose=true)
-@assert evaluate_handle(checkbox, "el => el.checked", verbose=true) "Checkbox should be checked"
+# Fill in form fields
+evaluate(client, """
+    document.querySelector('input[name="custname"]').value = 'John Doe';
+    document.querySelector('input[value="medium"]').click();
+    document.querySelector('input[value="bacon"]').click();
+    document.querySelector('textarea[name="comments"]').value = 'Please ring doorbell twice';
+""")
 
-# Form submission
-input = ElementHandle(client, "#name", verbose=true)
-type_text(input, "John Doe", verbose=true)
+# Verify inputs
+name = evaluate(client, "document.querySelector('input[name=\"custname\"]').value")
+size = evaluate(client, "document.querySelector('input[name=\"size\"]:checked').value")
+```
 
-select = ElementHandle(client, "#color", verbose=true)
-select_option(select, "blue", verbose=true)
+## Form Automation
+```julia
+# Complex form handling with JSON verification
+form_data = evaluate(client, """
+    JSON.stringify({
+        name: document.querySelector('input[name="custname"]').value,
+        size: document.querySelector('input[name="size"]:checked').value,
+        toppings: Array.from(document.querySelectorAll('input[name="topping"]:checked'))
+            .map(el => el.value)
+    })
+""")
+```
 
-submit = ElementHandle(client, "button[type='submit']", verbose=true)
-click(submit, verbose=true)
+## Advanced Automation
+```julia
+# Dynamic DOM manipulation
+evaluate(client, """
+    // Create new elements
+    const newHeader = document.createElement('h2');
+    newHeader.textContent = 'Dynamically Added Content';
+    document.body.insertBefore(newHeader, document.body.firstChild);
 
-# Multiple element handling
-items = [ElementHandle(client, item, verbose=true) for item in ["#item1", "#item2", "#item3"]]
-for element in items
-    if is_visible(element)
-        text = get_text(element)
-        testid = get_attribute(element, "data-testid")
-        println("Item $testid: $text")
-    end
-end
+    // Modify existing elements
+    const paragraphs = document.getElementsByTagName('p');
+    Array.from(paragraphs).forEach((p, index) => {
+        p.style.color = index % 2 ? 'blue' : 'green';
+        p.style.padding = '10px';
+    });
+""")
 ```
