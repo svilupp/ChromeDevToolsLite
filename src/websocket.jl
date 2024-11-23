@@ -1,7 +1,3 @@
-struct TimeoutError <: Exception
-    msg::String
-end
-
 """
     start_message_handler(client::WSClient)
 
