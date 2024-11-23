@@ -47,8 +47,9 @@ Note: Some tests require a running Chromium instance with remote debugging enabl
 1. Follow Julia style guide
 2. Use meaningful variable names
 3. Add docstrings for all public functions
-4. Include examples in docstrings
+4. Include examples in docstrings with verbose flag options
 5. Write unit tests for new functionality
+6. Use verbose flag for debugging operations
 
 ## Adding New Features
 
@@ -66,31 +67,32 @@ git checkout -b feature/your-feature-name
 
 ### Adding a New CDP Command
 1. Add command definition in appropriate type file
-2. Implement error handling
-3. Add unit tests
-4. Add example usage
+2. Implement error handling and verbose logging
+3. Add unit tests with verbose mode coverage
+4. Add example usage with verbose options
 5. Update documentation
 
 Example from our codebase:
 ```julia
 # From examples/14_evaluate_handle_test.jl
-# Implementation of evaluate_handle
-element = ElementHandle(client, "#myButton")
-result = evaluate_handle(element, "el => el.textContent")
+# Implementation of evaluate_handle with verbose logging
+element = ElementHandle(client, "#myButton", verbose=true)
+result = evaluate_handle(element, "el => el.textContent", verbose=true)
 ```
 
 ### Testing Tips
 - Use `MockWebSocket` for CDP tests
 - Test error conditions and timeouts
 - Verify edge cases
+- Test with both verbose=true and verbose=false
 
 Example test pattern:
 ```julia
-# Example error handling
+# Example error handling with verbose logging
 try
-    element = ElementHandle(client, "#non-existent")
+    element = ElementHandle(client, "#non-existent", verbose=true)
     if !isnothing(element)
-        click(element)
+        click(element, verbose=true)
     end
 catch e
     println("Element interaction failed: ", e)
