@@ -31,7 +31,12 @@ brew install chromium
 - `test/`: Test suite
 - `examples/`: Example scripts
 - `docs/`: Documentation
-- `HTTP_CAPABILITIES.md`: Supported features and limitations
+  - `src/`: Documentation source files
+  - `src/assets/`: Documentation assets and guides
+    - `HTTP_CAPABILITIES.md`: Supported features and limitations
+    - `HTTP_LIMITATIONS.md`: Known limitations
+    - `TROUBLESHOOTING.md`: Common issues and solutions
+    - `MIGRATION.md`: Migration guides
 
 ## Running Tests
 

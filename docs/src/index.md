@@ -47,7 +47,7 @@ finally
 end
 ```
 
-See the [Browser](@ref) API documentation and [HTTP_CAPABILITIES.md](HTTP_CAPABILITIES.md) for supported features and limitations.
+See the [Browser](@ref) API documentation and [HTTP Capabilities](assets/HTTP_CAPABILITIES.md) for supported features and limitations.
 
 ```@index
 ```

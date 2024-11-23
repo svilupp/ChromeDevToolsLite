@@ -100,4 +100,4 @@ The browser operations can throw the following errors:
 - `ErrorException`: When Chrome is not running or the endpoint is incorrect
 - CDP method errors: When a CDP method fails or is unsupported
 
-For more details about supported features and limitations, see [HTTP_CAPABILITIES.md](../../HTTP_CAPABILITIES.md).
+For more details about supported features and limitations, see [HTTP Capabilities](../assets/HTTP_CAPABILITIES.md).

@@ -1,10 +1,10 @@
 module ChromeDevToolsLite
 
 using HTTP, JSON3
+import Base: show
 
 # Export types and functions
-export Browser, Page
-export execute_cdp_method, new_page, close_page, get_pages
+export Browser, Page, show, execute_cdp_method, connect_browser, new_page, close_page, get_pages, verify_page_state, batch_update_elements
 
 # Include type definitions and core functionality
 include("types.jl")
@@ -27,12 +27,5 @@ function connect_browser(endpoint::String="http://localhost:9222")
         error("Failed to connect to Chrome at $endpoint. Make sure Chrome is running with --remote-debugging-port enabled. Error: $(e.message)")
     end
 end
-
-"""
-    Base.show(io::IO, browser::Browser)
-
-Custom display for Browser instances.
-"""
-Base.show(io::IO, browser::Browser) = print(io, "Browser(endpoint=\"$(browser.endpoint)\")")
 
 end # module

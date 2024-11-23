@@ -3,101 +3,36 @@
 ## Core Types
 
 ### Browser
-```julia
-Browser(endpoint::String)
+```@docs
+Browser
+show(::IO, ::Browser)
 ```
-Represents a connection to Chrome's debugging interface.
 
 ### Page
-```julia
-struct Page
-    id::String
-    type::String
-    url::String
-    title::String
-    ws_debugger_url::String
-    dev_tools_frontend_url::String
-end
+```@docs
+Page
 ```
-Represents a page/tab in Chrome.
 
 ## Core Functions
 
 ### Browser Management
-```julia
-Browser(endpoint::String)
-new_page(browser::Browser) -> Page
-close_page(browser::Browser, page::Page) -> Nothing
-get_pages(browser::Browser) -> Vector{Page}
+```@docs
+connect_browser
+new_page
+close_page
+get_pages
 ```
 
 ### State Management Utilities
-```julia
-# Page state verification
-function verify_page_state(browser::Browser, page::Page, timeout::Number=5)
-    start_time = time()
-    while (time() - start_time) < timeout
-        result = execute_cdp_method(browser, page, "Runtime.evaluate", Dict(
-            "expression" => """
-                ({
-                    ready: document.readyState === 'complete',
-                    url: window.location.href,
-                    title: document.title,
-                    metrics: {
-                        links: document.querySelectorAll('a').length,
-                        forms: document.querySelectorAll('form').length
-                    }
-                })
-            """,
-            "returnByValue" => true
-        ))
-        if !haskey(result, "error") && result["result"]["value"]["ready"]
-            return result["result"]["value"]
-        end
-        sleep(0.1)
-    end
-    return nothing
-end
-
-# Batch DOM operations
-function batch_update_elements(browser::Browser, page::Page, updates::Dict)
-    execute_cdp_method(browser, page, "Runtime.evaluate", Dict(
-        "expression" => """
-            const updates = $(JSON3.write(updates));
-            const results = {};
-            for (const [selector, value] of Object.entries(updates)) {
-                const el = document.querySelector(selector);
-                if (el) {
-                    el.value = value;
-                    el.dispatchEvent(new Event('input'));
-                    results[selector] = true;
-                } else {
-                    results[selector] = false;
-                }
-            }
-            return results;
-        """,
-        "returnByValue" => true
-    ))
-end
+```@docs
+verify_page_state
+batch_update_elements
 ```
 
 ### CDP Method Execution
-```julia
-execute_cdp_method(browser::Browser, page::Page, method::String, params::Dict=Dict())
+```@docs
+execute_cdp_method
 ```
-Executes Chrome DevTools Protocol methods via HTTP endpoints.
-
-#### Parameters
-- `browser`: Browser instance
-- `page`: Page instance
-- `method`: CDP method name (e.g., "Page.navigate")
-- `params`: Dictionary of parameters for the CDP method
-
-#### Returns
-Dictionary containing either:
-- `result`: Success response with method-specific data
-- `error`: Error information if the method failed
 
 ## Common Usage Patterns
 
@@ -109,6 +44,7 @@ if state !== nothing
     println("Page loaded: ", state["url"])
     println("Elements found: ", state["metrics"])
 end
+```
 
 # Batch form updates
 updates = Dict(
@@ -138,14 +74,6 @@ result = execute_cdp_method(browser, page, "Runtime.evaluate", Dict(
 
 ### DOM Operations
 ```julia
-# Element existence check
-result = execute_cdp_method(browser, page, "Runtime.evaluate", Dict(
-    "expression" => """
-        !!document.querySelector('.my-class')
-    """,
-    "returnByValue" => true
-))
-
 # Form interaction
 result = execute_cdp_method(browser, page, "Runtime.evaluate", Dict(
     "expression" => """
@@ -248,4 +176,4 @@ end
    - Reset application state between tests
    - Manage browser memory usage
 
-See [HTTP_LIMITATIONS.md](../../HTTP_LIMITATIONS.md) for detailed constraints and workarounds.
+See [HTTP Limitations](../guides/http_limitations.md) for detailed constraints and workarounds.

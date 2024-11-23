@@ -3,7 +3,28 @@
 """
     execute_cdp_method(browser::Browser, page::Page, method::String, params::Dict=Dict()) -> Dict
 
-Execute any CDP method via HTTP protocol endpoint. Some methods may not work if they require WebSocket connections.
+Execute any Chrome DevTools Protocol (CDP) method via HTTP protocol endpoint.
+
+# Arguments
+- `browser::Browser`: Browser instance to execute the method on
+- `page::Page`: Target page for the CDP method
+- `method::String`: CDP method name (e.g., "Page.navigate", "Runtime.evaluate")
+- `params::Dict`: Optional parameters for the CDP method
+
+# Returns
+- `Dict`: Response containing either:
+  - `result`: Success response with method-specific data
+  - `error`: Error information if the method failed
+
+# Example
+```julia
+result = execute_cdp_method(browser, page, "Runtime.evaluate", Dict(
+    "expression" => "document.title",
+    "returnByValue" => true
+))
+```
+
+Note: Some methods may not work if they require WebSocket connections.
 See HTTP_CAPABILITIES.md for details on supported features.
 """
 function execute_cdp_method(browser::Browser, page::Page, method::String, params::Dict=Dict())

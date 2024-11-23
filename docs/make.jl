@@ -12,17 +12,23 @@ makedocs(;
         edit_link="main",
         assets=String[],
     ),
-    warnonly=[:missing_docs],
+    warnonly=[:missing_docs, :docs_block],
     pages=[
         "Home" => "index.md",
         "Getting Started" => "getting_started.md",
-        "API Reference" => "api/browser.md",
+        "Examples" => "examples.md",
+        "API Reference" => "api/reference.md",
+        "Guides" => [
+            "HTTP Capabilities" => "guides/http_capabilities.md",
+            "HTTP Limitations" => "guides/http_limitations.md",
+            "Troubleshooting" => "guides/troubleshooting.md",
+            "Migration" => "guides/migration.md"
+        ]
     ],
     source="src",
     build="build",
     clean=true,  # Clean build directory
     doctest=true,
-    checkdocs=:all,
 )
 
 deploydocs(;

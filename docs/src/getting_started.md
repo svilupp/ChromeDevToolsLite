@@ -101,4 +101,4 @@ else
 end
 ```
 
-For more detailed information about supported features and limitations, see [HTTP_CAPABILITIES.md](../HTTP_CAPABILITIES.md).
+For more detailed information about supported features and limitations, see [HTTP Capabilities](assets/HTTP_CAPABILITIES.md).
