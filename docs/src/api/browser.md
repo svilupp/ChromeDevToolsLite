@@ -3,6 +3,10 @@
 ```@docs
 connect_browser
 send_cdp_message
+ensure_chrome_running
+get_ws_id
+connect!
+close
 ```
 
 ## Examples
@@ -12,18 +16,16 @@ send_cdp_message
 client = connect_browser()
 
 try
-    # Navigate to a website using CDP message
-    send_cdp_message(client, "Page.navigate", Dict("url" => "https://example.com"))
+    # Navigate to a website using high-level function
+    goto(client, "https://example.com")
 
-    # Evaluate JavaScript
-    result = send_cdp_message(client, "Runtime.evaluate",
-                          Dict("expression" => "document.title",
-                               "returnByValue" => true))
+    # Get page content
+    html_content = content(client)
 
     # Take screenshot
-    screenshot = send_cdp_message(client, "Page.captureScreenshot", Dict())
+    screenshot(client)
 finally
-    close(client)  # Use close() from Base for cleanup
+    close(client)
 end
 ```
 
@@ -36,3 +38,4 @@ The browser operations can throw:
 
 The browser connection can be configured with:
 - `endpoint`: The Chrome DevTools Protocol endpoint (default: "http://localhost:9222")
+- `verbose`: Enable detailed logging (default: false)
