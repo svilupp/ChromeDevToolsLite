@@ -47,12 +47,15 @@ end
 
 """
     try_connect(client::WSClient; max_retries::Int = MAX_RETRIES,
+        retry_delay::Real = RETRY_DELAY, timeout::Real = CONNECTION_TIMEOUT,
+        verbose::Bool = false)
         retry_delay::Real = RETRY_DELAY, verbose::Bool = false)
 
 Attempt to establish a WebSocket connection with retry logic and timeout.
 """
 function try_connect(client::WSClient; max_retries::Int = MAX_RETRIES,
-        retry_delay::Real = RETRY_DELAY, verbose::Bool = false)
+        retry_delay::Real = RETRY_DELAY, timeout::Real = CONNECTION_TIMEOUT,
+        verbose::Bool = false)
     with_retry(max_retries = max_retries, retry_delay = retry_delay, verbose = verbose) do
         verbose && @debug "Attempting WebSocket connection" url=client.ws_url
 
@@ -78,10 +81,10 @@ function try_connect(client::WSClient; max_retries::Int = MAX_RETRIES,
 
         # Timeout task
         @async begin
-            sleep(CONNECTION_TIMEOUT)
+            sleep(timeout)
             if !isready(connection_status)
                 put!(connection_status,
-                    TimeoutError("Connection timeout after $(CONNECTION_TIMEOUT) seconds"))
+                    TimeoutError("Connection timeout after $(timeout) seconds"))
             end
         end
 
@@ -121,7 +124,9 @@ function connect!(client::WSClient; max_retries::Int = MAX_RETRIES,
 end
 
 """
-    send_cdp_message(client::WSClient, method::String, params::Dict=Dict(); increment_id::Bool=true) -> Dict
+    send_cdp_message(
+        client::WSClient, method::String, params::Dict = Dict();
+        increment_id::Bool = true, timeout::Real = CONNECTION_TIMEOUT)
 
 Send a Chrome DevTools Protocol message and wait for the response.
 
@@ -130,16 +135,17 @@ Send a Chrome DevTools Protocol message and wait for the response.
 - `method::String`: The CDP method to call (e.g., "Page.navigate")
 - `params::Dict`: Parameters for the CDP method (default: empty Dict)
 - `increment_id::Bool`: Whether to increment the message ID counter (default: true)
+- `timeout::Real`: The timeout for the response in seconds (default: CONNECTION_TIMEOUT)
 
 # Returns
 - `Dict`: The CDP response message
 
 # Throws
 - `TimeoutError`: If response times out
-- `ConnectionError`: If connection is lost during message exchange
 """
 function send_cdp_message(
-        client::WSClient, method::String, params::Dict = Dict(); increment_id::Bool = true)
+        client::WSClient, method::String, params::Dict = Dict();
+        increment_id::Bool = true, timeout::Real = CONNECTION_TIMEOUT)
     if !client.is_connected || isnothing(client.ws)
         @warn "WebSocket not connected, attempting reconnection"
         try_connect(client)
@@ -165,22 +171,36 @@ function send_cdp_message(
         try
             WebSockets.send(client.ws, JSON3.write(message))
 
-            # Add timeout for response
-            timeout_task = @task begin
-                sleep(CONNECTION_TIMEOUT)
+            # Create a separate task for timeout
+            timeout_task = @async begin
+                sleep(timeout)
+                # Instead of closing the channel, put an error message
                 put!(response_channel,
-                    Dict("error" => Dict("message" => "Response timeout")))
+                    Dict{String, Any}("error" => Dict("type" => "TimeoutError",
+                        "message" => "CDP response timeout after $(timeout) seconds")))
             end
 
-            while client.is_connected
-                msg = take!(client.message_channel)
-                if haskey(msg, "id") && msg["id"] == id
-                    schedule(timeout_task, InterruptException(); error = true)
-                    put!(response_channel, msg)
-                    break
+            try
+                while client.is_connected
+                    msg = take!(client.message_channel)
+                    if haskey(msg, "id") && msg["id"] == id
+                        # Cancel timeout task if we got a response
+                        if !istaskdone(timeout_task)
+                            schedule(timeout_task, InterruptException(); error = true)
+                        end
+                        put!(response_channel, msg)
+                        break
+                    end
                 end
+            catch e
+                # Remove timeout_reached check since we're not using that flag anymore
+                rethrow(e)
             end
         catch e
+            if e isa InterruptException
+                # Ignore interrupts from canceling the timeout task
+                return
+            end
             @error "Error sending CDP message" exception=e method=method
             put!(response_channel,
                 Dict("error" => Dict("message" => "Failed to send message: $e")))
@@ -190,7 +210,11 @@ function send_cdp_message(
     response = take!(response_channel)
 
     if haskey(response, "error")
-        error("CDP Error: $(response["error"])")
+        error_data = response["error"]
+        if get(error_data, "type", "") == "TimeoutError"
+            throw(TimeoutError(error_data["message"]))
+        end
+        error("CDP Error: $error_data")
     end
 
     return response

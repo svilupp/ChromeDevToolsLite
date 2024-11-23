@@ -43,6 +43,19 @@
     title = eval_response["result"]["result"]["value"]
     @test title == "Example Domain" || error("Unexpected page title: $title")
 
+    ## Connection Timeout test 
+    # Test connection timeout
+    @test_throws TimeoutError send_cdp_message(client, "Runtime.evaluate",
+        Dict{String, Any}(
+            "expression" => """
+                new Promise((resolve) => {
+                    // Sleep longer than CONNECTION_TIMEOUT
+                    setTimeout(resolve, 1000);
+                });
+            """,
+            "awaitPromise" => true
+        ), timeout = 0.1)
+
     # Test connection closure
     close(client)
     @test isnothing(client.ws)
