@@ -9,26 +9,19 @@ using Logging
 Wait for DOM to be ready with timeout.
 """
 function wait_for_dom_ready(client::WSClient, timeout::Float64=5.0)
-    @debug "Waiting for DOM ready" timeout
     start_time = time()
     while (time() - start_time) < timeout
-        try
-            result = send_cdp_message(client,
-                "Runtime.evaluate",
-                Dict{String, Any}(
-                    "expression" => "document.readyState === 'complete'",
-                    "returnByValue" => true
-                ))
-            if get(get(get(result, "result", Dict()), "result", Dict()), "value", false)
-                @debug "DOM ready"
-                return true
-            end
-        catch e
-            @warn "Error checking DOM ready state" exception=e
+        result = send_cdp_message(client,
+            "Runtime.evaluate",
+            Dict{String, Any}(
+                "expression" => "document.readyState === 'complete'",
+                "returnByValue" => true
+            ))
+        if get(get(get(result, "result", Dict()), "result", Dict()), "value", false)
+            return true
         end
         sleep(0.5)
     end
-    @warn "DOM ready timeout exceeded" timeout
     return false
 end
 
@@ -189,19 +182,11 @@ end
         rethrow(e)
     finally
         if client !== nothing
-            @info "Starting test environment cleanup"
+            @info "Cleaning up test environment"
             try
-                # Close any open pages
-                @debug "Closing pages"
-                send_cdp_message(client, "Page.close", Dict{String, Any}())
-
-                # Close browser connection
-                @debug "Closing browser connection"
                 close(client)
-
-                @info "Test environment cleanup completed successfully"
             catch e
-                @error "Error during cleanup" exception=e stacktrace=stacktrace()
+                @warn "Error during cleanup" exception=e
             end
         end
     end

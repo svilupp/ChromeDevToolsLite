@@ -8,13 +8,13 @@ ENV["JULIA_DEBUG"] = "ChromeDevToolsLite"
 
 function setup_test()
     @debug "Setting up test environment"
-    sleep(2.0)  # Increased delay to give Chrome more time to stabilize
+    sleep(0.5)  # Give Chrome time to stabilize
     return nothing
 end
 
 function teardown_test()
     @debug "Tearing down test environment"
-    sleep(2.0)  # Increased delay for cleanup
+    sleep(0.5)  # Give Chrome time to clean up
     return nothing
 end
 
@@ -89,15 +89,15 @@ end
             response = send_cdp_message(client, "Page.enable")
             @info "CDP Response received" response=response
 
-            # Enhanced response validation with detailed logging
+            # More detailed response validation
             @test isa(response, Dict) || begin
-                @error "Invalid response type" type=typeof(response) response=response
-                error("Expected Dict response, got $(typeof(response))")
+                @error "Response is not a dictionary" type=typeof(response)
+                error("Invalid response type")
             end
 
             @test (haskey(response, "result") || haskey(response, "error")) || begin
-                @error "Invalid response format" response=response
-                error("Response must contain either 'result' or 'error' field")
+                @error "Response missing both result and error fields" response=response
+                error("Invalid response format")
             end
 
             if haskey(response, "error")
@@ -105,8 +105,7 @@ end
                 error("Page.enable command failed: $(response["error"])")
             end
 
-            @test haskey(response, "result") "Response must contain 'result' field"
-            @debug "Page.enable successful" result=response["result"]
+            @test haskey(response, "result") "Expected result field in response"
         catch e
             @error "CDP test failed" exception=e stacktrace=stacktrace()
             rethrow(e)
