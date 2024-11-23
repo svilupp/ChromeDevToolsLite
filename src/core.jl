@@ -83,7 +83,28 @@ end
 """
     verify_page_state(browser::Browser, page::Page, timeout::Number=5) -> Union{Dict, Nothing}
 
-Verify the page load state and return page metrics. Returns nothing if verification fails or times out.
+Verify the page load state and return page metrics.
+
+# Arguments
+- `browser::Browser`: Browser instance to check
+- `page::Page`: Target page to verify
+- `timeout::Number`: Maximum time in seconds to wait for page to be ready (default: 5)
+
+# Returns
+- `Dict`: Page state information including:
+  - `ready`: Boolean indicating if page is fully loaded
+  - `url`: Current page URL
+  - `title`: Page title
+  - `metrics`: Dictionary with page metrics (link count, form count)
+- `nothing`: If verification fails or times out
+
+# Example
+```julia
+state = verify_page_state(browser, page)
+if !isnothing(state)
+    @info "Page loaded" url=state["url"] title=state["title"]
+end
+```
 """
 function verify_page_state(browser::Browser, page::Page, timeout::Number=5)
     start_time = time()
@@ -113,7 +134,27 @@ end
 """
     batch_update_elements(browser::Browser, page::Page, updates::Dict) -> Dict
 
-Update multiple DOM elements in a single CDP call. Returns a dictionary of success/failure status for each selector.
+Update multiple DOM elements in a single CDP call.
+
+# Arguments
+- `browser::Browser`: Browser instance to execute updates on
+- `page::Page`: Target page containing the elements
+- `updates::Dict`: Dictionary mapping CSS selectors to values to set
+
+# Returns
+- `Dict`: Status dictionary where keys are CSS selectors and values are boolean success indicators
+
+# Example
+```julia
+results = batch_update_elements(browser, page, Dict(
+    "#username" => "john_doe",
+    "#password" => "secret123"
+))
+@info "Update results" success=all(values(results))
+```
+
+# Throws
+- `ErrorException`: If the batch update operation fails
 """
 function batch_update_elements(browser::Browser, page::Page, updates::Dict)
     result = execute_cdp_method(browser, page, "Runtime.evaluate", Dict(
