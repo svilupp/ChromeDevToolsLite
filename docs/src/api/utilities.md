@@ -98,14 +98,9 @@ type_text(page, "#input", "text", options)
 The package implements several Base operations for its core types:
 
 ```@docs
-Base.close(::AbstractBrowser)
-Base.close(::AbstractBrowserContext)
-Base.close(::AbstractPage)
-Base.close(::AbstractElementHandle)
-Base.show(::IO, ::AbstractBrowser)
-Base.show(::IO, ::AbstractBrowserContext)
-Base.show(::IO, ::AbstractPage)
-Base.show(::IO, ::AbstractElementHandle)
+Base.close(::WSClient)
+Base.show(::IO, ::WSClient)
+Base.show(::IO, ::ElementHandle)
 ```
 
 ## Resource Management
@@ -113,35 +108,29 @@ Base.show(::IO, ::AbstractElementHandle)
 ### Best Practices
 ```julia
 # Always use try-finally for proper cleanup
-browser = Browser()
-context = new_context(browser)
-page = new_page(context)
+client = connect_browser()
 
 try
     # Your page operations here
-    goto(page, "https://example.com")
-    element = wait_for_selector(page, ".content")
+    goto(client, "https://example.com")
+    element = ElementHandle(client, ".content")
 finally
-    # Clean up in reverse order of creation
-    close(page)
-    close_context(context)
-    close(browser)
+    # Clean up
+    close(client)
 end
 ```
 
 ### Memory Management Tips
-- Close pages when no longer needed
-- Clean up contexts after use
-- Always close the browser in a `finally` block
+- Always close the client connection when done
 - Use shorter timeouts for faster failure detection
 
 ### Connection Management
 ```julia
 # Robust connection handling
 try
-    browser = Browser()
-    if browser === nothing
-        error("Failed to create browser instance")
+    client = connect_browser()
+    if client === nothing
+        error("Failed to create browser connection")
     end
 
     # Your browser operations here
@@ -151,6 +140,6 @@ catch e
         # Implement retry logic here
     end
 finally
-    browser !== nothing && close(browser)
+    client !== nothing && close(client)
 end
 ```

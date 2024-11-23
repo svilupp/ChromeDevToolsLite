@@ -18,7 +18,6 @@ makedocs(;
         "Getting Started" => "getting_started.md",
         "API Reference" => [
             "Browser" => "api/browser.md",
-            "BrowserContext" => "api/browser_context.md",
             "Page" => "api/page.md",
             "ElementHandle" => "api/element_handle.md",
             "CDP Implementation" => "api/cdp.md",
