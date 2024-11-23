@@ -30,11 +30,6 @@ function click(client::WSClient; button::String="left", x::Union{Int,Nothing}=no
 
     modifier_flags = sum((get(modifier_map, mod, 0) for mod in modifiers), init=0)
 
-    params = Dict{String,Any}(
-        "button" => button,
-        "clickCount" => 1
-    )
-
     # Get current position if x and y are not provided
     if isnothing(x) || isnothing(y)
         pos = get_mouse_position(client)
@@ -42,10 +37,17 @@ function click(client::WSClient; button::String="left", x::Union{Int,Nothing}=no
         y = pos.y
     end
 
-    params["x"] = x
-    params["y"] = y
-    params["modifiers"] = modifier_flags
+    # Base parameters for mouse events
+    params = Dict{String,Any}(
+        "button" => button,
+        "clickCount" => 1,
+        "x" => x,
+        "y" => y,
+        "modifiers" => modifier_flags
+    )
 
+    # Sequence: move -> mousePressed -> mouseReleased
+    send_command(client, "Input.dispatchMouseEvent", merge(params, Dict("type" => "mouseMoved")))
     send_command(client, "Input.dispatchMouseEvent", merge(params, Dict("type" => "mousePressed")))
     send_command(client, "Input.dispatchMouseEvent", merge(params, Dict("type" => "mouseReleased")))
 end
@@ -66,6 +68,12 @@ end
 Move the mouse cursor to the specified coordinates.
 """
 function move_mouse(client::WSClient, x::Int, y::Int)
+    # Update stored mouse position
+    evaluate(client, """
+        window.mousePosition = { x: $(x), y: $(y) };
+    """)
+
+    # Dispatch CDP mouse move event
     send_command(client, "Input.dispatchMouseEvent", Dict(
         "type" => "mouseMoved",
         "x" => x,
@@ -79,19 +87,44 @@ end
 Get the current mouse cursor position.
 """
 function get_mouse_position(client::WSClient)
-    # Initialize mouse tracking if not already done
+    # Initialize mouse position if not already done
     evaluate(client, """
-        if (typeof window.mouseX === 'undefined') {
-            window.mouseX = 0;
-            window.mouseY = 0;
-            document.addEventListener('mousemove', (e) => {
-                window.mouseX = e.clientX;
-                window.mouseY = e.clientY;
-            });
+        if (typeof window.mousePosition === 'undefined') {
+            window.mousePosition = { x: 0, y: 0 };
         }
     """)
 
-    result = evaluate(client, "JSON.stringify({x: window.mouseX || 0, y: window.mouseY || 0})")
+    result = evaluate(client, "JSON.stringify(window.mousePosition)")
+    parsed = JSON3.read(result)
+    return (x=parsed.x, y=parsed.y)
+end
+
+"""
+    get_element_position(ws_client::WSClient, element_handle::String)
+
+Get the position of an element on the page.
+
+# Arguments
+- `ws_client::WSClient`: The WebSocket client connection
+- `element_handle::String`: CSS selector for the target element
+
+# Returns
+NamedTuple with x and y coordinates of the element's center
+"""
+function get_element_position(ws_client::WSClient, element_handle::String)
+    script = """
+    (function() {
+        const element = document.querySelector('$(element_handle)');
+        if (!element) return null;
+        const rect = element.getBoundingClientRect();
+        return JSON.stringify({
+            x: Math.round(rect.left + rect.width / 2),
+            y: Math.round(rect.top + rect.height / 2)
+        });
+    })()
+    """
+    result = evaluate(ws_client, script)
+    isnothing(result) && error("Element not found: $(element_handle)")
     parsed = JSON3.read(result)
     return (x=parsed.x, y=parsed.y)
 end
@@ -141,4 +174,4 @@ function type_text(client::WSClient, text::String)
 end
 
 # Export functions
-export click, dblclick, move_mouse, get_mouse_position, press_key, type_text
+export click, dblclick, move_mouse, get_mouse_position, press_key, type_text, get_element_position
