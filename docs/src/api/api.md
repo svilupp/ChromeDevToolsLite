@@ -1,104 +1,89 @@
 # API Reference
 
-## Browser Operations
-### `connect_browser(; verbose=false)`
+## Core Functions
+
+### Browser Connection
+```julia
+connect_browser(; verbose=false)
+```
 Connects to a Chrome browser instance running with remote debugging enabled.
 
-Example:
+### Page Navigation and Content
 ```julia
-client = connect_browser(verbose=true)
+goto(client, url)
 ```
+Navigates to the specified URL.
 
-### `close(client)`
-Closes the connection to the browser.
+```julia
+content(client)
+```
+Gets the HTML content of the current page.
 
-Example:
+```julia
+evaluate(client, script)
+```
+Executes JavaScript code on the current page and returns the result.
+
+```julia
+screenshot(client; verbose=false)
+```
+Takes a screenshot of the current page.
+
+### Resource Management
 ```julia
 close(client)
 ```
-
-## Page Operations
-### `goto(client, url)`
-Navigates to the specified URL.
-
-Example:
-```julia
-goto(client, "https://example.com")
-```
-
-### `content(client)`
-Gets the HTML content of the current page.
-
-Example:
-```julia
-html_content = content(client)
-```
-
-### `evaluate(client, script)`
-Executes JavaScript code on the current page.
-
-Example:
-```julia
-title = evaluate(client, "document.title")
-```
-
-### `screenshot(client; verbose=false)`
-Takes a screenshot of the current page.
-
-Example:
-```julia
-screenshot(client, verbose=true)
-```
-
-## Element Operations
-### Element Selection and Interaction
-Use `evaluate()` with JavaScript DOM operations for element interactions:
-
-Example:
-```julia
-# Click a button
-evaluate(client, "document.querySelector('button').click()")
-
-# Fill a form field
-evaluate(client, "document.querySelector('input[name=\"username\"]').value = 'John'")
-
-# Get element text
-text = evaluate(client, "document.querySelector('.content').textContent")
-```
+Closes the connection to the browser.
 
 ## Best Practices
-1. Always use a `try`-`finally` block to ensure browser connections are properly closed:
+
+### Error Handling
 ```julia
-client = connect_browser()
 try
-    # Your automation code here
-finally
-    close(client)
+    client = connect_browser(verbose=true)
+    try
+        goto(client, "https://example.com")
+        result = evaluate(client, "document.title")
+        println("Page title: $result")
+    finally
+        close(client)
+    end
+catch e
+    @warn "Browser automation failed" exception=e
+    rethrow(e)
 end
 ```
 
-2. Use verbose mode for debugging:
+### JavaScript Evaluation
 ```julia
-client = connect_browser(verbose=true)
-```
+# Simple evaluation
+title = evaluate(client, "document.title")
 
-3. Handle JavaScript evaluation results appropriately:
-```julia
-# For complex data, use JSON serialization
-data = evaluate(client, """
-    JSON.stringify({
-        title: document.title,
-        url: window.location.href
-    })
+# Complex DOM operations
+evaluate(client, """
+    const button = document.querySelector('#submit');
+    if (button) {
+        button.click();
+        return true;
+    }
+    return false;
 """)
-parsed_data = JSON.parse(data)
+
+# Form handling
+evaluate(client, """
+    const form = document.querySelector('form');
+    if (form) {
+        form.querySelector('input[name="username"]').value = 'user123';
+        form.querySelector('input[name="password"]').value = 'pass123';
+        form.submit();
+        return true;
+    }
+    return false;
+""")
 ```
 
-## Examples
-See the `examples/` directory for complete working examples:
-
-1. `1_basic_connection.jl` - Basic browser connection and cleanup
-2. `2_page_operations.jl` - Navigation, content extraction, and screenshots
-3. `3_element_interactions.jl` - Finding and interacting with page elements
-4. `4_form_automation.jl` - Complex form handling and submission
-5. `5_advanced_automation.jl` - Advanced DOM manipulation and page modifications
+### Screenshots
+```julia
+# Take a full page screenshot
+screenshot(client, verbose=true)
+```
