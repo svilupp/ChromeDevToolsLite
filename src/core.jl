@@ -9,7 +9,7 @@ Execute any Chrome DevTools Protocol (CDP) method via HTTP protocol endpoint.
 - `browser::Browser`: Browser instance to execute the method on
 - `page::Page`: Target page for the CDP method
 - `method::String`: CDP method name (e.g., "Page.navigate", "Runtime.evaluate")
-- `params::Dict`: Optional parameters for the CDP method
+- `params::Dict`: Optional parameters for the CDP method (default: empty Dict)
 
 # Returns
 - `Dict`: Response containing either:

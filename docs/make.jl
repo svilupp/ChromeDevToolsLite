@@ -1,6 +1,7 @@
 using ChromeDevToolsLite
 using Documenter
 
+# Ensure docstrings are properly set up
 DocMeta.setdocmeta!(ChromeDevToolsLite, :DocTestSetup, :(using ChromeDevToolsLite); recursive=true)
 
 makedocs(;
@@ -11,8 +12,9 @@ makedocs(;
         canonical="https://svilupp.github.io/ChromeDevToolsLite.jl",
         edit_link="main",
         assets=String[],
+        prettyurls=false,  # Added to help with local builds
     ),
-    warnonly=[:missing_docs, :docs_block],
+    warnonly=[:missing_docs, :autodocs_block],  # Changed to only warn about missing docs and autodocs blocks
     pages=[
         "Home" => "index.md",
         "Getting Started" => "getting_started.md",

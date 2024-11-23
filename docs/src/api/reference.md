@@ -1,37 +1,17 @@
 # API Reference
 
-## Core Types
+## Types
 
-### Browser
-```@docs
-Browser
-show(::IO, ::Browser)
+```@autodocs
+Modules = [ChromeDevToolsLite]
+Order   = [:type]
 ```
 
-### Page
-```@docs
-Page
-```
+## Functions
 
-## Core Functions
-
-### Browser Management
-```@docs
-connect_browser
-new_page
-close_page
-get_pages
-```
-
-### State Management Utilities
-```@docs
-verify_page_state
-batch_update_elements
-```
-
-### CDP Method Execution
-```@docs
-execute_cdp_method
+```@autodocs
+Modules = [ChromeDevToolsLite]
+Order   = [:function]
 ```
 
 ## Common Usage Patterns
@@ -46,6 +26,17 @@ if state !== nothing
 end
 ```
 
+```julia
+# Batch form updates
+updates = Dict(
+    "#username" => "user123",
+    "#password" => "pass456",
+    "#email" => "test@example.com"
+)
+result = batch_update_elements(browser, page, updates)
+```
+
+```julia
 # Batch form updates
 updates = Dict(
     "#username" => "user123",
