@@ -40,13 +40,12 @@ export extract_cdp_result, extract_element_result, with_retry
 include("utils.jl")
 
 # Include types first
-export WSClient, ElementHandle
+export WSClient, ElementHandle, Page
 export ElementNotFoundError, NavigationError, EvaluationError, TimeoutError, ConnectionError
 include("types.jl")
 
 # Include core functionality
-export connect!, send_cdp_message, close, handle_event, is_connected, try_connect
-# export start_message_handler
+export connect!, send_cdp_message, send_command, close, handle_event, is_connected, try_connect
 include("websocket.jl")
 
 export connect_browser, ensure_browser_available
@@ -55,8 +54,11 @@ include("browser.jl")
 export goto, evaluate, screenshot, content
 include("page.jl")
 
-export click, type_text, check, uncheck, select_option,
-       is_visible, get_text, get_attribute, evaluate_handle
+# Include input functionality before element handling
+export click, dblclick, move_mouse, get_mouse_position, press_key, type_text
+include("input.jl")
+
+export check, uncheck, select_option, is_visible, get_text, get_attribute, evaluate_handle
 include("element.jl")
 
 end

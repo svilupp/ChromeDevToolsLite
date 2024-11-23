@@ -25,6 +25,20 @@ mutable struct WSClient
 end
 
 """
+    Page
+
+Represents a browser page/tab with its associated WebSocket client.
+
+# Fields
+- `client::WSClient`: The WebSocket client for communication
+- `target_id::String`: The unique identifier for this page/tab
+"""
+struct Page
+    client::WSClient
+    target_id::String
+end
+
+"""
     ElementHandle
 
 Represents a handle to a DOM element in the browser.
