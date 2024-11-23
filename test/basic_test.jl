@@ -4,12 +4,12 @@ using Test
 @testset "ChromeDevToolsLite Basic Tests" begin
     @testset "WebSocket Connection" begin
         # Basic connection test
-        @test isdefined(ChromeDevToolsLite, :connect_ws)
+        @test isdefined(ChromeDevToolsLite, :connect_browser)
     end
 
     @testset "CDP Commands" begin
         # Basic CDP command functionality
-        @test isdefined(ChromeDevToolsLite, :send_command)
+        @test isdefined(ChromeDevToolsLite, :send_cdp_message)
     end
 
     @testset "Page Operations" begin

@@ -1,7 +1,7 @@
 using ChromeDevToolsLite
 
 # Connect to Chrome
-client = connect_chrome(get_ws_url())
+client = connect_browser()
 println("Connected to Chrome")
 
 # Create a test form page
@@ -31,13 +31,15 @@ evaluate(client, """
 
 # Fill out the form
 println("\nFilling out form...")
-type_text(client, "#username", "testuser")
-type_text(client, "#email", "test@example.com")
-type_text(client, "#message", "Hello from Julia!")
+evaluate(client, """
+    document.querySelector('#username').value = 'testuser';
+    document.querySelector('#email').value = 'test@example.com';
+    document.querySelector('#message').value = 'Hello from Julia!';
+""")
 
 # Submit form
 println("\nSubmitting form...")
-click_element(client, "#submit")
+evaluate(client, "document.querySelector('#submit').click()")
 
 # Get results
 println("\nForm submission result:")

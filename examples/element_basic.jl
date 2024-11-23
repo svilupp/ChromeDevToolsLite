@@ -2,7 +2,8 @@ using ChromeDevToolsLite
 using Base64
 
 # Connect to Chrome
-client = connect_chrome(get_ws_url())
+println("Connecting to Chrome...")
+client = connect_browser()
 println("Connected to Chrome")
 
 # Create a test page with interactive elements
@@ -20,12 +21,17 @@ evaluate(client, """
 
 # Type into input field
 println("\nTyping into input field...")
-type_text(client, "#name", "Julia User")
+evaluate(client, """
+    document.querySelector('#name').value = 'Julia User';
+    document.querySelector('#name').dispatchEvent(new Event('input'));
+""")
 println("Text entered")
 
 # Click the button
 println("\nClicking button...")
-click_element(client, "#greet")
+evaluate(client, """
+    document.querySelector('#greet').click();
+""")
 
 # Verify the interaction worked
 println("\nVerifying interaction...")

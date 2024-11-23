@@ -1,57 +1,79 @@
 using ChromeDevToolsLite
 using Base64
+using Logging
 
-# Connect to Chrome
-ws_url = get_ws_url()
-println("Connecting to Chrome at: ", ws_url)
-client = connect_chrome(ws_url)
+# Set logging level
+global_logger(ConsoleLogger(stderr, Logging.Info))
 
-# Navigate to a test page
-println("\nNavigating to test page...")
-goto(client, "about:blank")
+@info "Starting minimal core demo..."
 
-# Create test content
-println("\nCreating test content...")
-evaluate(client, """
-    document.body.innerHTML = `
-        <div id="container" style="padding: 20px; font-family: Arial;">
-            <h1 id="title">ChromeDevToolsLite Demo</h1>
-            <input type="text" id="test-input" placeholder="Type here...">
-            <button id="test-button">Click me</button>
-            <div id="output">Initial text</div>
-        </div>
-    `;
-""")
+try
+    # Connect to Chrome
+    @info "Connecting to Chrome..."
+    client = connect_browser()
 
-# Test element selection and text content
-println("\nTesting element content...")
-title_text = get_text(client, "#title")
-println("Title text: ", title_text)
+    # Create test content
+    @info "Creating test content..."
+    send_cdp_message(client, "Runtime.evaluate", Dict{String,Any}(
+        "expression" => """
+            document.body.innerHTML = `
+                <div id="container" style="padding: 20px; font-family: Arial;">
+                    <h1 id="title">ChromeDevToolsLite Demo</h1>
+                    <input type="text" id="test-input" placeholder="Type here...">
+                    <button id="test-button">Click me</button>
+                    <div id="output">Initial text</div>
+                </div>
+            `;
+        """
+    ))
 
-# Test input interaction
-println("\nTesting input interaction...")
-type_result = type_text(client, "#test-input", "Hello from Julia!")
-println("Text typed: ", type_result)
+    # Test element selection and text content
+    @info "Testing element content..."
+    title_result = send_cdp_message(client, "Runtime.evaluate", Dict{String,Any}(
+        "expression" => "document.querySelector('#title').textContent",
+        "returnByValue" => true
+    ))
+    title = get(get(get(title_result, "result", Dict()), "result", Dict()), "value", "unknown")
+    @info "Title text" text=title
 
-# Test button click
-println("\nTesting button click...")
-click_result = click_element(client, "#test-button")
-println("Button clicked: ", click_result)
+    # Test input interaction
+    @info "Testing input interaction..."
+    send_cdp_message(client, "Runtime.evaluate", Dict{String,Any}(
+        "expression" => """
+            const input = document.querySelector('#test-input');
+            input.value = 'Hello from Julia!';
+        """
+    ))
 
-# Get page content
-println("\nGetting page content...")
-html = content(client)
-println("Page content length: ", length(html))
+    # Test button click
+    @info "Testing button click..."
+    send_cdp_message(client, "Runtime.evaluate", Dict{String,Any}(
+        "expression" => "document.querySelector('#test-button').click()"
+    ))
 
-# Take screenshot
-println("\nTaking screenshot...")
-screenshot_data = screenshot(client)
-if !isnothing(screenshot_data)
-    open("minimal_demo.png", "w") do io
-        write(io, base64decode(screenshot_data))
+    # Get page content
+    @info "Getting page content..."
+    content_result = send_cdp_message(client, "Runtime.evaluate", Dict{String,Any}(
+        "expression" => "document.documentElement.outerHTML",
+        "returnByValue" => true
+    ))
+    content = get(get(get(content_result, "result", Dict()), "result", Dict()), "value", "unknown")
+    @info "Page content retrieved" content_length=length(content)
+
+    # Take screenshot
+    @info "Taking screenshot..."
+    screenshot_result = send_cdp_message(client, "Page.captureScreenshot", Dict{String,Any}())
+    screenshot_data = get(get(screenshot_result, "result", Dict()), "data", nothing)
+    if !isnothing(screenshot_data)
+        Base.open("minimal_demo.png", "w") do io
+            write(io, base64decode(screenshot_data))
+        end
+        @info "Screenshot saved as minimal_demo.png"
     end
-    println("Screenshot saved as minimal_demo.png")
-end
 
-close(client)
-println("\nDemo completed!")
+    @info "Demo completed successfully"
+    close(client)
+catch e
+    @error "Demo failed" exception=e
+    rethrow()
+end

@@ -1,20 +1,17 @@
 using ChromeDevToolsLite
+using JSON3
 
-# Get WebSocket URL for Chrome DevTools
-println("Getting Chrome DevTools WebSocket URL...")
-ws_url = get_ws_url()
-println("WebSocket URL: ", ws_url)
-
-# Connect to Chrome
-println("\nConnecting to Chrome...")
-client = connect_chrome(ws_url)
+# Connect to Chrome DevTools
+println("Connecting to Chrome DevTools...")
+client = connect_browser("http://localhost:9222")
 println("Connected successfully!")
 
-# Get browser version info to verify connection
-println("\nGetting browser version...")
-version = evaluate(client, "navigator.userAgent")
-println("Browser: ", version)
+# Test connection by evaluating JavaScript
+println("\nTesting connection...")
+response = send_cdp_message(client, "Runtime.evaluate", Dict{String,Any}("expression" => "navigator.userAgent"))
+println("Browser: ", response["result"]["result"]["value"])
 
 # Clean up
+println("\nClosing connection...")
 close(client)
-println("\nConnection closed.")
+println("Connection closed.")

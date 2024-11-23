@@ -1,7 +1,8 @@
 using ChromeDevToolsLite
 
 # Connect to Chrome
-client = connect_chrome(get_ws_url())
+println("Connecting to Chrome...")
+client = connect_browser()
 println("Connected to Chrome")
 
 # Create a test page with mixed content
@@ -25,12 +26,12 @@ evaluate(client, """
 
 # Get full page content
 println("\nRetrieving full page content:")
-html = content(client)
+html = evaluate(client, "document.documentElement.outerHTML")
 println("Page content length: ", length(html))
 
 # Get specific element text
 println("\nRetrieving specific elements:")
-h1_text = get_text(client, "h1")
+h1_text = evaluate(client, "document.querySelector('h1').textContent")
 println("H1 text: ", h1_text)
 
 # Get multiple elements

@@ -3,75 +3,62 @@ Basic page operations for ChromeDevToolsLite
 """
 
 """
-    goto(page::Page, url::String)
+    goto(client::WSClient, url::String)
 
 Navigate to the specified URL.
 """
-function goto(page::Page, url::String)
-    send_cdp_message(page.browser, "Page.enable", Dict("sessionId" => page.session_id))
-    send_cdp_message(page.browser, "Page.navigate", Dict(
-        "sessionId" => page.session_id,
-        "url" => url
-    ))
+function goto(client::WSClient, url::String)
+    # Enable page domain first
+    send_cdp_message(client, "Page.enable", Dict{String,Any}())
+
+    # Navigate to URL
+    send_cdp_message(client, "Page.navigate", Dict{String,Any}("url" => url))
+
+    # Enable runtime for JavaScript evaluation
+    send_cdp_message(client, "Runtime.enable", Dict{String,Any}())
+
+    # Small delay to ensure page loads
+    sleep(1)
 end
 
 """
-    evaluate(page::Page, expression::String, args...) -> Any
+    evaluate(client::WSClient, expression::String) -> Any
 
-Evaluate JavaScript in the page context with optional arguments.
+Evaluate JavaScript in the page context.
 """
-function evaluate(page::Page, expression::String, args...)
-    send_cdp_message(page.browser, "Runtime.enable", Dict("sessionId" => page.session_id))
-
-    # Create a function that wraps our expression to properly handle arguments
-    wrapped_expression = """
-    (function() {
-        const __args = $(JSON3.write([args...]));
-        return (function() { $expression }).apply(null, __args);
-    })()
-    """
-
-    result = send_cdp_message(page.browser, "Runtime.evaluate", Dict(
-        "sessionId" => page.session_id,
-        "expression" => wrapped_expression
-    ))
-
-    return get(get(result, "result", Dict()), "value", nothing)
+function evaluate(client::WSClient, expression::String)
+    response = send_cdp_message(client, "Runtime.evaluate", Dict{String,Any}("expression" => expression))
+    if response isa Dict &&
+       haskey(response, "result") &&
+       haskey(response["result"], "result") &&
+       haskey(response["result"]["result"], "value")
+        return response["result"]["result"]["value"]
+    end
+    return nothing
 end
 
 """
-    screenshot(page::Page) -> String
+    screenshot(client::WSClient) -> String
 
 Take a screenshot of the current page, returns base64 encoded string.
 """
-function screenshot(page::Page)
-    result = send_cdp_message(page.browser, "Page.captureScreenshot", Dict(
-        "sessionId" => page.session_id
-    ))
-    return get(result, "data", "")
+function screenshot(client::WSClient)
+    # Enable page domain if not already enabled
+    send_cdp_message(client, "Page.enable", Dict{String,Any}())
+    result = send_cdp_message(client, "Page.captureScreenshot", Dict{String,Any}())
+    if result isa Dict && haskey(result, "result") && haskey(result["result"], "data")
+        return result["result"]["data"]
+    end
+    return nothing
 end
 
 """
-    content(page::Page) -> String
+    content(client::WSClient) -> String
 
 Get the HTML content of the page.
 """
-function content(page::Page)
-    result = evaluate(page, "document.documentElement.outerHTML")
-    return result
+function content(client::WSClient)
+    evaluate(client, "document.documentElement.outerHTML")
 end
 
-"""
-    set_content(page::Page, html::String)
-
-Set the HTML content of the page.
-"""
-function set_content(page::Page, html::String)
-    evaluate(page, """
-        document.open();
-        document.write(arguments[0]);
-        document.close();
-    """, html)
-end
-
-export goto, evaluate, screenshot, content, set_content
+export goto, evaluate, screenshot, content

@@ -1,8 +1,8 @@
 using ChromeDevToolsLite
 
 # Connect to Chrome
-ws_url = get_ws_url()
-client = connect_chrome(ws_url)
+println("Connecting to Chrome...")
+client = connect_browser()
 println("Connected to Chrome")
 
 # Navigate to a test page
@@ -13,8 +13,8 @@ goto(client, "https://example.com")
 title = evaluate(client, "document.title")
 println("Page title: ", title)
 
-# Get main heading text
-heading = get_text(client, "h1")
+# Get main heading text using JavaScript
+heading = evaluate(client, "document.querySelector('h1').textContent")
 println("Main heading: ", heading)
 
 # Get current URL

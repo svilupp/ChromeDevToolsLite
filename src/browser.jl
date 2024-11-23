@@ -1,118 +1,66 @@
-using HTTP.WebSockets
 using HTTP
 using JSON3
-using URIs
+using HTTP.WebSockets
+using Base.Threads: @async
 
 """
-    connect_browser(endpoint::String="http://localhost:9222") -> Browser
+    connect_browser(endpoint::String="http://localhost:9222") -> WSClient
 
-Connect to an existing Chrome instance at the given debugging endpoint.
-Returns a Browser instance with an active WebSocket connection.
+Connect to Chrome browser at the given debugging endpoint.
+Returns a WebSocket client for CDP communication.
 """
 function connect_browser(endpoint::String="http://localhost:9222")
     try
-        println("Debug: Attempting to connect to Chrome debugging endpoint: $endpoint")
-        # Get list of available pages
-        println("Debug: Fetching page list...")
+        # Get available targets
         response = HTTP.get("$endpoint/json/list")
-        println("Debug: Got response with status $(response.status)")
-        pages = JSON3.read(response.body)
-        println("Debug: Found $(length(pages)) pages")
+        targets = JSON3.read(response.body)
 
-        # Find first available page or create one if none exists
-        page = nothing
-        for p in pages
-            if p.type == "page"  # Accept any page type, including chrome:// URLs
-                println("Debug: Selected page with URL: $(p.url)")
-                page = p
+        # Find or create a page target
+        page_target = nothing
+        for target in targets
+            if target["type"] == "page"
+                page_target = target
                 break
             end
         end
 
-        if page === nothing
-            error("No suitable page found")
+        if isnothing(page_target)
+            response = HTTP.put("$endpoint/json/new")
+            page_target = JSON3.read(response.body)
         end
 
-        ws_url = page.webSocketDebuggerUrl
-        @debug "WebSocket URL obtained:" ws_url
+        ws_url = page_target["webSocketDebuggerUrl"]
+        client = WSClient(ws_url)
+        connected = Channel{Bool}(1)
 
-        browser_ref = Ref{Union{Browser,Nothing}}(nothing)
+        # Create task to handle WebSocket connection
+        @async begin
+            WebSockets.open(ws_url) do ws
+                client.ws = ws
+                client.is_connected = true
+                start_message_handler(client)
+                put!(connected, true)  # Signal connection is ready
 
-        # Start WebSocket connection
-        println("Debug: Attempting WebSocket connection to: $ws_url")
-        task = @async begin
-            try
-                HTTP.WebSockets.open(ws_url) do ws
-                    println("Debug: WebSocket connection established")
-                    browser = Browser(ws)
-                    browser_ref[] = browser
-
-                    while !eof(ws.io)
-                        data = WebSockets.receive(ws)
-                        if !isempty(data)
-                            try
-                                msg = JSON3.read(String(data), Dict)
-                                println("Debug: Received message: $(JSON3.write(msg))")
-
-                                # Handle response messages
-                                if haskey(msg, "id")
-                                    id = msg["id"]
-                                    if haskey(browser.responses, id)
-                                        put!(browser.responses[id], msg)
-                                    end
-                                else
-                                    # Handle event messages
-                                    put!(browser.messages, msg)
-                                end
-                            catch e
-                                println("Debug: Failed to process message: ", e)
-                            end
-                        end
-                    end
-                    println("Debug: WebSocket connection closed normally")
+                # Keep connection alive until closed
+                while client.is_connected && !WebSockets.isclosed(ws)
+                    sleep(0.1)
                 end
-            catch e
-                println("Debug: WebSocket error: ", e)
-                rethrow(e)
             end
         end
 
-        # Wait for connection with timeout
-        println("Debug: Waiting for WebSocket connection...")
-        timeout = 5  # Reduced timeout for faster feedback
-        start_time = time()
-        while browser_ref[] === nothing && (time() - start_time) < timeout
-            sleep(0.1)
-            print(".")  # Visual progress indicator
-        end
-        println()  # New line after progress dots
-
-        if browser_ref[] === nothing
-            error("Failed to establish WebSocket connection within $timeout seconds")
+        # Wait for connection to be established
+        if !take!(connected)
+            error("Failed to establish WebSocket connection")
         end
 
-        println("Debug: Browser connection established successfully")
-        return browser_ref[]
+        # Enable necessary domains after connection is confirmed
+        send_cdp_message(client, "Page.enable")
+        send_cdp_message(client, "Runtime.enable")
+
+        return client
     catch e
-        error("Failed to connect to Chrome: $(sprint(showerror, e))")
+        error("Failed to connect to Chrome: $e")
     end
 end
 
-"""
-    create_page(browser::Browser) -> Page
-
-Create a new page and return it with an attached session.
-"""
-function create_page(browser::Browser)
-    target = send_cdp_message(browser, "Target.createTarget", CDPParams.create_params(url="about:blank"))
-    target_id = get(target, "targetId", "")
-
-    session = send_cdp_message(browser, "Target.attachToTarget", CDPParams.create_params(
-        targetId=target_id,
-        flatten=true
-    ))
-    session_id = get(session, "sessionId", "")
-
-    # In CDP, frame_id is the same as target_id for the main frame
-    return Page(browser, target_id, target_id, session_id, target_id)
-end
+export connect_browser

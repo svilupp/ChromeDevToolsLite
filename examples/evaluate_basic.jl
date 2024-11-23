@@ -1,7 +1,7 @@
 using ChromeDevToolsLite
 
 # Connect to Chrome
-client = connect_chrome(get_ws_url())
+client = connect_browser()
 println("Connected to Chrome")
 
 # Create a test page
