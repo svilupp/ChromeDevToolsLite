@@ -4,8 +4,8 @@ This guide showcases practical examples from our test suite demonstrating variou
 
 ## Browser Connection
 ```julia
-# Connect to Chrome DevTools
-client = connect_browser()
+# Connect to Chrome DevTools with verbose logging for debugging
+client = connect_browser(verbose=true)
 
 try
     goto(client, "https://example.com")
@@ -18,7 +18,7 @@ end
 
 ## Form Filling
 ```julia
-# Fill out a complex form
+# Fill out a complex form with verbose logging
 form_data = Dict(
     "#name" => "John Doe",
     "#email" => "john@example.com",
@@ -27,13 +27,13 @@ form_data = Dict(
 )
 
 for (selector, value) in form_data
-    element = ElementHandle(client, selector)
+    element = ElementHandle(client, selector, verbose=true)
     if value isa Bool
-        value ? check(element) : uncheck(element)
+        value ? check(element, verbose=true) : uncheck(element, verbose=true)
     elseif selector == "#country"
-        select_option(element, value)
+        select_option(element, value, verbose=true)
     else
-        type_text(element, value)
+        type_text(element, value, verbose=true)
     end
 end
 ```
@@ -41,11 +41,11 @@ end
 ## Working with Elements
 ```julia
 # Find and interact with elements
-element = ElementHandle(client, "#submit-button")
-click(element)
+element = ElementHandle(client, "#submit-button", verbose=true)
+click(element, verbose=true)
 
 # Find and interact with multiple elements
-items = [ElementHandle(client, item) for item in ["#item1", "#item2", "#item3"]]
+items = [ElementHandle(client, item, verbose=true) for item in ["#item1", "#item2", "#item3"]]
 for element in items
     if is_visible(element)
         text = get_text(element)
@@ -57,42 +57,42 @@ end
 
 ## Dynamic Content Handling
 ```julia
-# Check element visibility and interact
-element = ElementHandle(client, "#dynamic-content")
+# Check element visibility and interact with verbose logging
+element = ElementHandle(client, "#dynamic-content", verbose=true)
 if !isnothing(element) && is_visible(element)
-    click(element)
+    click(element, verbose=true)
 end
 ```
 
 ## Taking Screenshots
 ```julia
 # Full page screenshot
-screenshot(client)
+screenshot(client, verbose=true)
 
 # Element-specific screenshot
-special_item = ElementHandle(client, ".item.special")
-screenshot(special_item)
+special_item = ElementHandle(client, ".item.special", verbose=true)
+screenshot(special_item, verbose=true)
 ```
 
 ## Element Interaction and Form Handling
 ```julia
-# Checkbox interaction
-checkbox = ElementHandle(client, "#notifications")
-check(checkbox)
-@assert evaluate_handle(checkbox, "el => el.checked") "Checkbox should be checked"
+# Enable verbose mode for detailed operation logging
+checkbox = ElementHandle(client, "#notifications", verbose=true)
+check(checkbox, verbose=true)
+@assert evaluate_handle(checkbox, "el => el.checked", verbose=true) "Checkbox should be checked"
 
 # Form submission
-input = ElementHandle(client, "#name")
-type_text(input, "John Doe")
+input = ElementHandle(client, "#name", verbose=true)
+type_text(input, "John Doe", verbose=true)
 
-select = ElementHandle(client, "#color")
-select_option(select, "blue")
+select = ElementHandle(client, "#color", verbose=true)
+select_option(select, "blue", verbose=true)
 
-submit = ElementHandle(client, "button[type='submit']")
-click(submit)
+submit = ElementHandle(client, "button[type='submit']", verbose=true)
+click(submit, verbose=true)
 
 # Multiple element handling
-items = [ElementHandle(client, item) for item in ["#item1", "#item2", "#item3"]]
+items = [ElementHandle(client, item, verbose=true) for item in ["#item1", "#item2", "#item3"]]
 for element in items
     if is_visible(element)
         text = get_text(element)
@@ -100,3 +100,4 @@ for element in items
         println("Item $testid: $text")
     end
 end
+```
