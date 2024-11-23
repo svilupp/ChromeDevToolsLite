@@ -17,7 +17,7 @@ include("page.jl")
 include("element.jl")
 
 # Export core functionality
-export connect_browser, send_cdp_message
+export WSClient, connect_browser, send_cdp_message
 export goto, evaluate, screenshot, content
 
 end
