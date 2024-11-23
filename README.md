@@ -5,7 +5,17 @@
 [![Coverage](https://codecov.io/gh/svilupp/ChromeDevToolsLite.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/svilupp/ChromeDevToolsLite.jl) 
 [![Aqua](https://raw.githubusercontent.com/JuliaTesting/Aqua.jl/master/badge.svg)](https://github.com/JuliaTesting/Aqua.jl)
 
-A lightweight Julia package for browser automation using the Chrome DevTools Protocol (CDP).
+A lightweight Julia package for browser automation using the Chrome DevTools Protocol (CDP). Inspired by Python's Playwright but providing just the essential functionality to get you started with browser automation in Julia.
+
+> [!WARNING]
+> This package is experimental and was developed with the help of Cognition's Devin. While it's great for supervised browser automation, never leave AI agents unsupervised when controlling your browser!
+
+## Why ChromeDevToolsLite?
+
+- **Lightweight & Simple**: Focused on essential browser automation features
+- **Existing Browser Sessions**: Connect to already open Chrome windows (keep your login sessions!)
+- **AI-Friendly**: Perfect for supervised browser automation with LLMs
+- **Modern Protocol**: Uses Chrome DevTools Protocol (CDP) for reliable communication
 
 ## Features
 
@@ -29,58 +39,72 @@ A lightweight Julia package for browser automation using the Chrome DevTools Pro
 
 ## Installation
 
+Package is not registered yet.
+
 ```julia
 using Pkg
-Pkg.add("ChromeDevToolsLite")
+Pkg.add(url="https://github.com/svilupp/ChromeDevToolsLite.jl")
 ```
 
 ## Prerequisites
 
-- Chrome/Chromium browser started with remote debugging enabled (`--remote-debugging-port=9222`)
+- Chrome/Chromium browser started with remote debugging enabled
 - Julia 1.10 or higher
+
+See [Chrome Setup Guide](#chrome-setup-guide) at the end of this README for detailed instructions for your operating system.
 
 ## Quick Start
 
 ```julia
 using ChromeDevToolsLite
 
-# Connect to browser with retry handling
-client = connect_browser(; max_retries=3)
+# 1. Start Chrome with remote debugging enabled (see Chrome Setup Guide below). Assumed to be started on port 9222.
+# 2. Connect to the browser
+client = connect_browser("http://localhost:9222") # your chrome debugging connection
 
+# 3. Basic automation example
 try
-    # Basic CDP message for navigation
+    # Navigate to a page
     send_cdp_message(client, "Page.navigate", Dict("url" => "https://example.com"))
-
-    # Create element handles for interaction
+    
+    # Take a screenshot
+    screenshot = send_cdp_message(client, "Page.captureScreenshot")
+    write("screenshot.png", base64decode(screenshot["result"]["data"]))
+    
+    # Find and click a button
     button = ElementHandle(client, "#submit-button")
-    if is_visible(button)
-        click(button)
-    end
-
-    # Form interaction
-    input = ElementHandle(client, "#search")
-    type_text(input, "search term")
-
-    # JavaScript evaluation
-    result = send_cdp_message(client, "Runtime.evaluate",
-                           Dict("expression" => "document.title",
-                                "returnByValue" => true))
-    println("Page title: ", result["result"]["value"])
-
-    # Take screenshot
-    screenshot_result = send_cdp_message(client, "Page.captureScreenshot")
-    # Save base64 screenshot data
-    write("screenshot.png", base64decode(screenshot_result["result"]["data"]))
-catch e
-    if e isa HTTP.WebSockets.WebSocketError
-        println("WebSocket connection error")
-    elseif e isa HTTP.ExceptionRequest.StatusError
-        println("Browser connection failed")
-    else
-        rethrow(e)
-    end
+    click(button)
 finally
-    # Clean up resources
+    close_browser(client)
+end
+```
+
+## AI Integration Example
+
+```julia
+using ChromeDevToolsLite
+using Base64
+
+function ask_llm_about_page(screenshot_path)
+    # Your LLM integration code here
+    # eg., OpenAI.create_chat(...) or Anthropic.messages(...)
+end
+
+client = connect_browser()
+try
+    # Navigate to page
+    send_cdp_message(client, "Page.navigate", Dict("url" => "https://example.com"))
+    
+    # Capture screenshot
+    screenshot = send_cdp_message(client, "Page.captureScreenshot")
+    write("screenshot.png", base64decode(screenshot["result"]["data"]))
+    
+    # Ask LLM about the page
+    llm_response = ask_llm_about_page("screenshot.png")
+    
+    # Let LLM suggest next actions (with proper supervision!)
+    println("LLM suggests: ", llm_response)
+finally
     close_browser(client)
 end
 ```
@@ -93,7 +117,7 @@ end
 ```julia
 # Ensure Chrome is running with debugging port
 # First, check if Chrome is available
-if !verify_browser_available("http://localhost:9222")
+if !ensure_browser_available("http://localhost:9222")
     error("Chrome not available. Start it with: chromium --remote-debugging-port=9222")
 end
 
@@ -180,19 +204,65 @@ julia --project=. examples/01_page_navigation_test.jl
    ```
 3. Run the examples to verify functionality
 
-## Documentation
-
-For detailed API documentation, see the `docs/` directory:
-
-- [Browser API](docs/src/api/browser.md): Browser connection and CDP message handling
-- [Element API](docs/src/api/element.md): DOM element interactions and form handling
-- [Getting Started Guide](docs/src/getting_started.md): Quick start and basic usage examples
-- [Error Handling Guide](docs/src/error_handling.md): Common errors and troubleshooting
-
-## Contributing
-
-Contributions are welcome! Please read our [Contributing Guide](docs/src/contributing.md) for details.
-
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Chrome Setup Guide
+
+### Windows
+1. Find your Chrome/Chromium installation path (typically `C:\Program Files\Google\Chrome\Application\chrome.exe`)
+2. Open Command Prompt (cmd) and run:
+```batch
+"C:\Program Files\Google\Chrome\Application\chrome.exe" --remote-debugging-port=9222
+```
+Or for headless mode:
+```batch
+"C:\Program Files\Google\Chrome\Application\chrome.exe" --remote-debugging-port=9222 --headless
+```
+
+### macOS
+1. Open Terminal and run:
+```bash
+/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --remote-debugging-port=9222
+```
+Or for headless mode:
+```bash
+/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --remote-debugging-port=9222 --headless
+```
+
+### Linux
+1. Open Terminal and run:
+```bash
+google-chrome --remote-debugging-port=9222
+# Or for Chromium
+chromium --remote-debugging-port=9222
+```
+Or for headless mode:
+```bash
+google-chrome --remote-debugging-port=9222 --headless
+# Or for Chromium
+chromium --remote-debugging-port=9222 --headless
+```
+
+### Verifying Setup
+To verify Chrome is running in debug mode:
+1. Open your browser and navigate to: `http://localhost:9222`
+2. You should see a JSON page listing available debugging targets
+3. In Julia, you can verify with:
+```julia
+using ChromeDevToolsLite
+ensure_browser_available("http://localhost:9222")
+```
+
+### Common Setup Issues
+- **Port Already in Use**: If port 9222 is taken, try a different port (e.g., 9223)
+- **Permission Denied**: Run the command with elevated privileges (admin/sudo). Add permissions to the terminal / VSCode in your Mac's Security & Privacy settings.
+- **Chrome Not Found**: Ensure the path to Chrome executable is correct
+- **Chrome Already Running**: If you have Chrome already running, you cannot start a new instance with debugging enabled. You need to first close Chrome and then start it with the debugging port enabled.
+- **Firewall Issues**: Check if your firewall is blocking the connection
+
+
+## Alternative Packages
+
+- [WebDriver.jl](https://github.com/Nosferican/WebDriver.jl): A mature package using the Selenium WebDriver protocol. While it requires opening new browser windows (losing existing sessions), it's battle-tested and might be more suitable for production use cases.
