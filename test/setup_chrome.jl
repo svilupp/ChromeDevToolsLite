@@ -1,4 +1,4 @@
-using Pkg
+using HTTP
 
 """
     setup_chrome()
@@ -29,20 +29,25 @@ function setup_chrome()
             # Chrome wasn't running, which is fine
         end
 
-        cmd = pipeline(`google-chrome --remote-debugging-port=9222 --headless --disable-gpu --no-sandbox`, stdout=devnull, stderr=devnull)
+        # Start Chrome in debug mode with additional flags for stability
+        cmd = pipeline(`google-chrome --remote-debugging-port=9222 --headless --disable-gpu --no-sandbox --disable-dev-shm-usage`, stdout=devnull, stderr=devnull)
         process = run(cmd, wait=false)
-        sleep(5)  # Give Chrome time to start
 
-        # Verify Chrome is running
-        for _ in 1:3
+        # Give Chrome more time to start and stabilize
+        sleep(10)
+
+        # Verify Chrome is running and accepting connections
+        for _ in 1:5  # More retries
             try
-                HTTP.get("http://localhost:9222/json/version")
+                response = HTTP.get("http://localhost:9222/json/version")
+                @info "Chrome started successfully" version=String(response.body)
                 return true
-            catch
-                sleep(2)
+            catch e
+                @warn "Waiting for Chrome to start..." exception=e
+                sleep(3)  # Longer retry interval
             end
         end
-        error("Failed to start Chrome in debug mode")
+        error("Failed to start Chrome in debug mode after multiple attempts")
     else
         error("""
         Chrome must be started manually in debug mode on non-Linux systems.
