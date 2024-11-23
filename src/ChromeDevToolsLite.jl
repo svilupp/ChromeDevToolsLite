@@ -4,9 +4,9 @@
 A lightweight Julia implementation of Chrome DevTools Protocol client.
 
 # Features
-- Browser automation and control
+- Browser automation and control via Chrome DevTools Protocol
 - Element interaction and manipulation
-- Page navigation and evaluation
+- Page navigation and JavaScript evaluation
 - Screenshot capture
 
 # Configuration
@@ -36,6 +36,7 @@ const CONNECTION_TIMEOUT = 5.0
 # Import Base operations
 import Base: close, show
 
+# Export utility functions
 export extract_cdp_result, extract_element_result
 include("utils.jl")
 
