@@ -15,39 +15,26 @@ catch e
 end
 ```
 
-2. **Browser Not Available**
-```julia
-if !verify_browser_available("http://localhost:9222")
-    @error "Chrome not available. Start it with: chromium --remote-debugging-port=9222"
-end
-```
-
 ### Element Interaction Errors
 
-1. **Element Not Found**
+1. **Element Visibility**
 ```julia
-element = ElementHandle(client, "#non-existent")
+element = ElementHandle(client, "#button")
 if !is_visible(element)
     @warn "Element not found or not visible"
 end
 ```
 
-2. **Operation Failures**
+2. **Operation Verification**
 ```julia
-# Click operations
-if !click(element)
-    @warn "Click operation failed"
-end
-
 # Form interactions
-if !type_text(element, "test")
-    @warn "Failed to input text"
-end
+element = ElementHandle(client, "#input")
+type_text(element, "test")
 ```
 
 ### CDP Message Errors
 
-1. **Invalid CDP Commands**
+1. **CDP Command Results**
 ```julia
 result = send_cdp_message(client, "Runtime.evaluate",
     Dict("expression" => "document.title",
@@ -55,14 +42,6 @@ result = send_cdp_message(client, "Runtime.evaluate",
 
 if haskey(result, "error")
     @error "CDP command failed" error=result["error"]
-end
-```
-
-2. **JavaScript Evaluation Errors**
-```julia
-result = evaluate_handle(element, "el => el.someUndefinedMethod()")
-if result === nothing
-    @warn "JavaScript evaluation failed"
 end
 ```
 
@@ -79,10 +58,10 @@ finally
 end
 ```
 
-### 2. Connection Retry Logic
-Use the built-in retry mechanism for robust connections:
+### 2. Connection Management
+Use the built-in connection management:
 ```julia
-client = connect_browser(; max_retries=3)
+client = connect_browser()
 ```
 
 ### 3. Element State Verification
@@ -110,15 +89,13 @@ global_logger(ConsoleLogger(stderr, Logging.Info))
 
 ## Common Solutions
 
-### 1. Browser Launch Issues
+### 1. Browser Connection
 ```julia
 # Ensure Chrome is running with correct flags
 # chromium --remote-debugging-port=9222
 
-# Verify browser availability
-if !ensure_chrome_running(max_attempts=5, delay=1.0)
-    error("Failed to connect to Chrome")
-end
+# Connect to browser
+client = connect_browser()
 ```
 
 ### 2. Element Selection Issues
