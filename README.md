@@ -70,14 +70,25 @@ using ChromeDevToolsLite
 client = connect_browser()
 
 try
-    # Navigate to a page
+    # Navigate to a page and wait for load
     goto(client, "https://example.com")
 
+    # Wait for specific elements to be visible
+    wait_for_element(client, "h1")  # Wait for main heading
+
+    # Get page information
+    page_info = Dict(
+        "title" => evaluate(client, "document.title"),
+        "url" => evaluate(client, "window.location.href"),
+        "source" => content(client)  # Get full HTML
+    )
+
     # Find and interact with elements
-    element = query_selector(client, "button")
+    button = query_selector(client, "button")
+    wait_for_element_visible(client, button)  # Ensure button is visible
 
     # Move mouse and click
-    move_mouse(client, 100, 100)
+    move_mouse(client, button)  # Move to element
     click(client)
 
     # Type text with keyboard
