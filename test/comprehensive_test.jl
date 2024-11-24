@@ -1,3 +1,36 @@
+# Helper functions for robust testing
+function wait_for_element(client, selector; timeout=10, visible=true)
+    start_time = time()
+    while (time() - start_time) < timeout
+        try
+            element = ElementHandle(client, selector)
+            if !visible || is_visible(element)
+                return element
+            end
+        catch
+            sleep(0.1)
+        end
+        sleep(0.5)
+    end
+    error("Timeout waiting for element: $selector")
+end
+
+function wait_for_navigation(client; timeout=10)
+    start_time = time()
+    while (time() - start_time) < timeout
+        try
+            response = evaluate(client, "document.readyState")
+            if response == "complete"
+                return true
+            end
+        catch
+            sleep(0.1)
+        end
+        sleep(0.5)
+    end
+    error("Navigation timeout")
+end
+
 @testset "ChromeDevToolsLite Comprehensive Tests" begin
     client = connect_browser(ENDPOINT)
 
@@ -61,7 +94,7 @@
 
         # Test disconnection simulation
         evaluate(client, "window.close()"; verbose = true) ## works only for windows opened by the script, security
-        # Test content after disconnection simulation 
+        # Test content after disconnection simulation
         @test content(client; verbose = true) isa String  # Should still return content or handle gracefully
     end
 
@@ -70,17 +103,21 @@
         local_path = joinpath(@__DIR__, "test_pages", "form.html")
         url = "file://" * local_path
         goto(client, url)
+        wait_for_navigation(client)
 
         # Test input field with ElementHandle
-        input = ElementHandle(client, "#name")
+        input = wait_for_element(client, "#name")
         @test type_text(input, "Test User")
+        sleep(0.5)  # Allow for input processing
         @test evaluate_handle(input, "el.value") == "Test User"
 
         # Test checkbox with ElementHandle
-        checkbox = ElementHandle(client, "#check1")
+        checkbox = wait_for_element(client, "#check1")
         @test check(checkbox)
+        sleep(0.5)  # Allow for state change
         @test evaluate_handle(checkbox, "el.checked") == true
         @test uncheck(checkbox)
+        sleep(0.5)  # Allow for state change
         @test evaluate_handle(checkbox, "el.checked") == false
     end
 
@@ -89,17 +126,18 @@
         local_path = joinpath(@__DIR__, "test_pages", "multiple_elements.html")
         url = "file://" * local_path
         goto(client, url)
+        wait_for_navigation(client)
 
         # Test visible elements
-        visible_el = ElementHandle(client, "[data-testid='item1']")
+        visible_el = wait_for_element(client, "[data-testid='item1']")
         @test is_visible(visible_el)
 
         # Test hidden elements (using display: none)
-        hidden_el = ElementHandle(client, "[data-testid='item3']")
+        hidden_el = wait_for_element(client, "[data-testid='item3']", visible=false)
         @test !is_visible(hidden_el)
 
         # Test special element
-        special_el = ElementHandle(client, "[data-testid='item5']")
+        special_el = wait_for_element(client, "[data-testid='item5']")
         @test is_visible(special_el)
     end
 
@@ -108,16 +146,18 @@
         local_path = joinpath(@__DIR__, "test_pages", "text_content.html")
         url = "file://" * local_path
         goto(client, url)
+        wait_for_navigation(client)
 
         # Test static text content
-        content = ElementHandle(client, "#content")
+        content = wait_for_element(client, "#content")
         @test !isempty(get_text(content))
 
         # Test dynamic text content
-        dynamic = ElementHandle(client, "#dynamic-content")
+        dynamic = wait_for_element(client, "#dynamic-content")
         initial_text = get_text(dynamic)
-        button = ElementHandle(client, "#update-button")
+        button = wait_for_element(client, "#update-button")
         @test click(button)
+        sleep(1)  # Allow for content update
         @test get_text(dynamic) != initial_text
     end
 
@@ -126,16 +166,19 @@
         local_path = joinpath(@__DIR__, "test_pages", "radio_buttons.html")
         url = "file://" * local_path
         goto(client, url)
+        wait_for_navigation(client)
 
         # Test radio button selection
-        radio1 = ElementHandle(client, "#radio1")
-        radio2 = ElementHandle(client, "#radio2")
+        radio1 = wait_for_element(client, "#radio1")
+        radio2 = wait_for_element(client, "#radio2")
 
         @test check(radio1)
+        sleep(0.5)  # Allow for state change
         @test evaluate_handle(radio1, "el.checked") == true
         @test evaluate_handle(radio2, "el.checked") == false
 
         @test check(radio2)
+        sleep(0.5)  # Allow for state change
         @test evaluate_handle(radio1, "el.checked") == false
         @test evaluate_handle(radio2, "el.checked") == true
     end
@@ -145,18 +188,30 @@
         local_path = joinpath(@__DIR__, "test_pages", "element_evaluate.html")
         url = "file://" * local_path
         goto(client, url)
+        wait_for_navigation(client)
 
         # Test attribute retrieval
-        element = ElementHandle(client, "#test-div")
+        element = wait_for_element(client, "#test-div")
         @test get_attribute(element, "data-custom") == "test-data"
         @test get_attribute(element, "nonexistent") === nothing
 
-        # Test complex evaluation
-        @test evaluate(client, """(() => {
-            const el = document.querySelector('#test-div');
-            const rect = el.getBoundingClientRect();
-            return rect.width > 0 && rect.height > 0;
-        })()""") == true
+        # Test complex evaluation with retry
+        let attempts = 3
+            while attempts > 0
+                try
+                    @test evaluate(client, """(() => {
+                        const el = document.querySelector('#test-div');
+                        const rect = el.getBoundingClientRect();
+                        return rect.width > 0 && rect.height > 0;
+                    })()""") == true
+                    break
+                catch
+                    attempts -= 1
+                    sleep(1)
+                    attempts > 0 || rethrow()
+                end
+            end
+        end
     end
 
     @testset "Form Validation" begin
@@ -164,16 +219,20 @@
         local_path = joinpath(@__DIR__, "test_pages", "form_validation.html")
         url = "file://" * local_path
         goto(client, url)
+        wait_for_navigation(client)
 
         # Test required field validation
-        input = ElementHandle(client, "#required-input")
-        submit = ElementHandle(client, "#submit-button")
+        input = wait_for_element(client, "#required-input")
+        submit = wait_for_element(client, "#submit-button")
 
-        @test click(submit)  # Should not submit with empty required field
+        @test click(submit)
+        sleep(0.5)  # Allow for validation
         @test evaluate_handle(input, "el.validity.valid") == false
 
         @test type_text(input, "valid input")
+        sleep(0.5)  # Allow for input processing
         @test click(submit)
+        sleep(0.5)  # Allow for validation
         @test evaluate_handle(input, "el.validity.valid") == true
     end
 
@@ -181,24 +240,35 @@
         local_path = joinpath(@__DIR__, "test_pages", "dynamic_content.html")
         url = "file://" * local_path
         goto(client, url)
+        wait_for_navigation(client)
 
         # Test delayed content visibility
-        delayed = ElementHandle(client, "#delayed-content")
+        delayed = wait_for_element(client, "#delayed-content", visible=false)
         @test !is_visible(delayed)
 
-        show_button = ElementHandle(client, "#show-delayed")
+        show_button = wait_for_element(client, "#show-delayed")
         @test click(show_button)
 
-        # Wait for animation
-        sleep(1.5)  # Give extra time for the delay
+        # Wait for animation with retry
+        let attempts = 3
+            while attempts > 0
+                sleep(0.5)
+                if is_visible(delayed)
+                    break
+                end
+                attempts -= 1
+                attempts > 0 || error("Element did not become visible")
+            end
+        end
         @test is_visible(delayed)
 
         # Test dynamic content updates
-        dynamic = ElementHandle(client, "#dynamic-content")
+        dynamic = wait_for_element(client, "#dynamic-content")
         initial_content = get_text(dynamic)
 
-        update_button = ElementHandle(client, "#update-button")
+        update_button = wait_for_element(client, "#update-button")
         @test click(update_button)
+        sleep(1)  # Allow for content update
         @test get_text(dynamic) != initial_content
     end
 
@@ -206,42 +276,50 @@
         local_path = joinpath(@__DIR__, "test_pages", "complex_form.html")
         url = "file://" * local_path
         goto(client, url)
+        wait_for_navigation(client)
 
         # Test username validation
-        username = ElementHandle(client, "#username")
-        error_msg = ElementHandle(client, "#username-error")
+        username = wait_for_element(client, "#username")
+        error_msg = wait_for_element(client, "#username-error", visible=false)
 
         @test type_text(username, "ab")  # Too short
+        sleep(0.5)  # Allow for validation
         @test evaluate(
             client, "document.getElementById('username').dispatchEvent(new Event('input'))") !==
               nothing
+        sleep(0.5)  # Allow for error message
         @test is_visible(error_msg)
 
         @test type_text(username, "validuser")
+        sleep(0.5)  # Allow for validation
         @test evaluate(
             client, "document.getElementById('username').dispatchEvent(new Event('input'))") !==
               nothing
+        sleep(0.5)  # Allow for error message
         @test !is_visible(error_msg)
 
         # Test checkboxes
-        pref1 = ElementHandle(client, "#pref1")
-        pref2 = ElementHandle(client, "#pref2")
+        pref1 = wait_for_element(client, "#pref1")
+        pref2 = wait_for_element(client, "#pref2")
 
         @test check(pref1)
         @test check(pref2)
+        sleep(0.5)  # Allow for state change
         @test evaluate_handle(pref1, "el.checked") == true
         @test evaluate_handle(pref2, "el.checked") == true
 
         # Test select dropdown
-        select = ElementHandle(client, "#notification-type")
+        select = wait_for_element(client, "#notification-type")
         @test select_option(select, "weekly")
+        sleep(0.5)  # Allow for selection
         @test evaluate_handle(select, "el.value") == "weekly"
 
         # Test form submission
-        submit = ElementHandle(client, "#submit-form")
-        result = ElementHandle(client, "#form-result")
+        submit = wait_for_element(client, "#submit-form")
+        result = wait_for_element(client, "#form-result", visible=false)
 
         @test click(submit)
+        sleep(1)  # Allow for form submission and result display
         @test is_visible(result)
     end
 end

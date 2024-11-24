@@ -2,8 +2,8 @@ using Test
 using ChromeDevToolsLite
 
 @testset "Input Control Tests" begin
-    browser = connect_browser()
-    page = get_page(browser)
+    client = connect_browser()
+    page = get_page(client)
     # Use a simple HTML page with input element and test div
     goto(page, "data:text/html,<input id='test-input' type='text' style='position:fixed;left:50px;top:50px;'><div id='test-div' style='position:fixed;left:100px;top:100px;width:50px;height:50px;'>Test Div</div>")
 
@@ -50,5 +50,5 @@ using ChromeDevToolsLite
         @test input_value == "Hello, World!"
     end
 
-    close_browser(browser)
+    close(client)
 end
