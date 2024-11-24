@@ -216,19 +216,29 @@ Take a screenshot of the current page.
 
 # Arguments
 - `client::WSClient`: The WebSocket client to use
+- `save_path::String`: Path to save the screenshot file (default: empty string). If not empty, the screenshot is saved to the specified path.
 - `verbose::Bool`: Enable verbose logging (default: false)
 
 # Returns
 - `String`: Base64 encoded string of the screenshot, or nothing if capture fails
 """
-function screenshot(client::WSClient; verbose::Bool = false)
+function screenshot(client::WSClient; save_path::String = "", verbose::Bool = false)
     verbose && @debug "Taking page screenshot"
     # Enable page domain if not already enabled
     send_cdp(client, "Page.enable", Dict{String, Any}())
     result = send_cdp(client, "Page.captureScreenshot", Dict{String, Any}())
     if result isa Dict && haskey(result, "result") && haskey(result["result"], "data")
         verbose && @debug "Screenshot captured successfully"
-        return result["result"]["data"]
+        data = result["result"]["data"]
+        if !isempty(save_path)
+            image_data = Base64.base64decode(data)
+            # Decode base64 string to bytes before writing
+            mkpath(dirname(save_path))
+            open(save_path, "w") do f
+                write(f, image_data)
+            end
+        end
+        return data
     end
     verbose && @warn "Screenshot capture failed"
     return nothing

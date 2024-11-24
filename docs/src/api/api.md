@@ -4,5 +4,5 @@
 ```
 
 ```@autodocs
-Modules = [PromptingTools]
+Modules = [ChromeDevToolsLite]
 ```

@@ -194,7 +194,7 @@ function new_context(
 
     # Configure viewport if provided
     if !isempty(viewport)
-        set_viewport(page;
+        set_viewport!(page;
             width = get(viewport, "width", 1280),
             height = get(viewport, "height", 720),
             device_scale_factor = get(viewport, "deviceScaleFactor", 1.0),

@@ -12,7 +12,7 @@ const ENDPOINT = "http://localhost:9222"
 const MAX_SETUP_RETRIES = 3
 const SETUP_RETRY_DELAY = 2.0
 
-include("test_utils.jl")
+include("test_setup.jl")
 
 # Ensure Chrome is running before tests
 @testset "ChromeDevToolsLite.jl" begin

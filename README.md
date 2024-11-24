@@ -1,14 +1,15 @@
 # ChromeDevToolsLite 
 [![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://svilupp.github.io/ChromeDevToolsLite.jl/stable/) 
 [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://svilupp.github.io/ChromeDevToolsLite.jl/dev/)
-[![Build Status](https://github.com/svilupp/ChromeDevToolsLite.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/svilupp/ChromeDevToolsLite.jl/actions/workflows/CI.yml?query=branch%3Amain) 
+[![Build Status](https://github.com/svilupp/ChromeDevToolsLite.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/svilupp/ChromeDevToolsLite.jl/actions/workflows/CI.yml?query=branch%3Amain)
 [![Coverage](https://codecov.io/gh/svilupp/ChromeDevToolsLite.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/svilupp/ChromeDevToolsLite.jl) 
 [![Aqua](https://raw.githubusercontent.com/JuliaTesting/Aqua.jl/master/badge.svg)](https://github.com/JuliaTesting/Aqua.jl)
 
 A lightweight Julia package for browser automation using the Chrome DevTools Protocol (CDP). Inspired by Python's Playwright but providing just the essential functionality to get you started with browser automation in Julia.
 
 > [!WARNING]
-> This package is experimental and was developed with the help of Cognition's Devin. While it's great for supervised browser automation, never leave AI agents unsupervised when controlling your browser!
+> This package is experimental and was developed with the help of Cognition's [Devin](devin.ai). 
+> While it's great for supervised browser automation, never leave AI agents unsupervised when controlling your browser!
 
 ## Why ChromeDevToolsLite?
 
@@ -38,6 +39,13 @@ A lightweight Julia package for browser automation using the Chrome DevTools Pro
   - Text area content management
   - Multiple element selection and verification
 
+- **Input Control**
+  - Mouse movement and click simulation
+  - Double-click support
+  - Keyboard input and key press events
+  - Modifier key combinations (Control, Alt, Shift)
+  - Element position detection
+
 ## Installation
 
 Package is not registered yet.
@@ -63,53 +71,59 @@ using ChromeDevToolsLite
 client = connect_browser()
 
 try
-    # Navigate to a page
+    # Navigate to a page and wait for load
     goto(client, "https://example.com")
 
-    # Get page content
-    html_content = content(client)
-    println("Page title: ", evaluate(client, "document.title"))
+    # Get the source content of the page
+    source = content(client)
 
-    # Take a screenshot
-    screenshot(client)
+    # Wait for specific elements to be visible
+    wait_for_visible(client, "h1")  # Wait for main heading
 
-    # Interact with elements using JavaScript
-    evaluate(client, """
-        document.querySelector('button').click();
-        document.querySelector('input').value = 'Hello World';
-    """)
+    # Get the current page
+    page = get_page(client)
+    page_info = get_page_info(page)
+
+    # Find and interact with elements
+    button = query_selector(client, "button")
+    wait_for_visible(client, button)  # Ensure button is visible
+
+    # Move mouse and click
+    move_mouse(client, button)  # Move to element
+    click(client)
+
+    # Type text with keyboard
+    input = query_selector(client, "input")
+    type_text(input, "Hello World!")
+    press_key(client, "Enter")
+
+    # Take a screenshot -- returns a base64 encoded string, optionally save to file
+    screenshot(client; save_path="screenshot.png")
 finally
     close(client)
 end
 ```
 
-## AI Integration Example
+## PromptingTools.jl Example
+
+To be updated...
 
 ```julia
 using ChromeDevToolsLite
-using Base64
-
-function ask_llm_about_page(screenshot_path, page_info)
-    # Your LLM integration code here
-    # eg., OpenAI.create_chat(...) or Anthropic.messages(...)
-end
+using PromptingTools
+using PromptingTools: pprint
 
 client = connect_browser()
 try
     # Navigate and wait for page load
     goto(client, "https://example.com")
 
-    # Gather page information
-    screenshot(client)
-    page_info = Dict(
-        "title" => evaluate(client, "document.title"),
-        "content" => content(client),
-        "url" => evaluate(client, "window.location.href")
-    )
+    # Get the screenshot
+    screenshot(client; save_path="screenshot.png")
 
-    # Ask LLM about the page
-    llm_response = ask_llm_about_page("screenshot.png", page_info)
-    println("LLM suggests: ", llm_response)
+    # Ask LLM about the page // ideally, define tools for computer use
+    msg = aitools("What's on this page?"; image_path="screenshot.png")
+    pprint(msg)
 finally
     close(client)
 end
@@ -171,7 +185,7 @@ For more detailed examples and solutions, see the [examples/](examples/) directo
 
 ## Running Examples
 
-The package includes five comprehensive example scripts in the `examples/` directory that demonstrate all key features:
+The package includes six comprehensive example scripts in the `examples/` directory that demonstrate all key features:
 
 ### 1. Basic Connection (`1_basic_connection.jl`)
 - Browser connection and cleanup
@@ -202,6 +216,14 @@ The package includes five comprehensive example scripts in the `examples/` direc
 - JSON-based content verification
 - Visual result capture with screenshots
 
+### 6. Mouse and Keyboard Control (`6_mouse_keyboard_control.jl`)
+- Mouse movement and positioning
+- Click and double-click operations
+- Keyboard input simulation
+- Modifier key combinations
+- Element position detection
+- Complex input sequences
+
 To run an example:
 
 ```julia
@@ -225,11 +247,6 @@ julia --project=. examples/1_basic_connection.jl
    ```julia
    julia --project=. examples/1_basic_connection.jl
    ```
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
 ## Chrome Setup Guide
 
 ### Windows
