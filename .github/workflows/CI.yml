@@ -36,21 +36,11 @@ jobs:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
 
-      - name: Install Chrome dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y wget unzip fontconfig fonts-liberation libu2f-udev xdg-utils
-
       - name: Setup Chrome
         run: |
-          wget -q -O chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
-          sudo apt install -y ./chrome.deb
+          sudo apt-get update
+          sudo apt-get install -y google-chrome-stable
           google-chrome --version
-
-      - name: Configure system limits
-        run: |
-          sudo sysctl -w fs.inotify.max_user_watches=524288
-          sudo sysctl -w fs.inotify.max_user_instances=512
 
       - uses: julia-actions/cache@v2
       - uses: julia-actions/julia-buildpkg@v1

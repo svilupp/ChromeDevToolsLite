@@ -54,8 +54,13 @@ function setup_chrome(; endpoint = ENDPOINT)
 
         # Start Chrome in debug mode with more robust options
         @info "Starting Chrome in debug mode..."
+        # cmd = pipeline(
+        #     `google-chrome $(join(LAUNCH_ARGS, " "))`,
+        #     stdout = devnull,
+        #     stderr = devnull
+        # )
         cmd = pipeline(
-            `google-chrome $(join(LAUNCH_ARGS, " "))`,
+            `google-chrome --remote-debugging-port=9222 --headless --disable-gpu --no-sandbox --disable-software-rasterizer --enable-features=NetworkService,NetworkServiceInProcess`,
             stdout = devnull,
             stderr = devnull
         )
