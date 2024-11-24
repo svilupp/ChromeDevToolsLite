@@ -15,6 +15,7 @@
     update_page!(page)
     @test haskey(page.extras, "targetId")
 
+    page = new_page(client)
     info = get_page_info(page)
     @test haskey(info, "targetId")
     @test haskey(info, "url")
