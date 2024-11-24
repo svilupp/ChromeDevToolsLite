@@ -12,13 +12,20 @@ function start_message_handler(client::WSClient)
                     if !isnothing(msg)
                         data = JSON3.read(msg, Dict)
 
-                        # Handle Inspector.detached events
+                        # Handle Inspector.detached events with more robust reconnection
                         if get(data, "method", "") == "Inspector.detached"
                             reason = get(get(data, "params", Dict()), "reason", "unknown")
                             @warn "Chrome DevTools detached" reason=reason
 
-                            if reason ∈ ["target_closed", "Render process gone."]
+                            if reason ∈ ["target_closed", "Render process gone.", "canceled"]
                                 client.is_connected = false
+                                # Try to reconnect if the connection was lost
+                                try
+                                    try_connect(client; max_retries=3, retry_delay=1.0)
+                                    @info "Successfully reconnected after detachment"
+                                catch e
+                                    @error "Failed to reconnect after detachment" exception=e
+                                end
                                 break
                             end
                         end
@@ -59,8 +66,8 @@ function try_connect(client::WSClient; max_retries::Int = MAX_RETRIES,
     with_retry(max_retries = max_retries, retry_delay = retry_delay, verbose = verbose) do
         verbose && @debug "Attempting WebSocket connection" url=client.ws_url
 
-        # Channel for connection status
-        connection_status = Channel{Union{WebSocket, Exception}}(1)
+        # Channel for connection status with buffer for race conditions
+        connection_status = Channel{Union{WebSocket, Exception}}(2)
 
         # Connection task
         @async begin
@@ -69,9 +76,19 @@ function try_connect(client::WSClient; max_retries::Int = MAX_RETRIES,
                     client.ws = ws
                     client.is_connected = true
                     put!(connection_status, ws)
-                    # Keep connection alive
+
+                    # Keep connection alive with heartbeat
                     while client.is_connected && !WebSockets.isclosed(ws)
-                        sleep(0.1)
+                        try
+                            # Send a heartbeat message every 30 seconds
+                            if isopen(ws)
+                                WebSockets.send(ws, JSON3.write(Dict("id" => -1, "method" => "HeartBeat")))
+                            end
+                        catch e
+                            @warn "Heartbeat failed" exception=e
+                            break
+                        end
+                        sleep(30)
                     end
                 end
             catch e
@@ -88,8 +105,9 @@ function try_connect(client::WSClient; max_retries::Int = MAX_RETRIES,
             end
         end
 
-        # Wait for connection result
+        # Wait for connection result with proper cleanup
         result = take!(connection_status)
+        close(connection_status)
 
         isa(result, Exception) && throw(result)
 

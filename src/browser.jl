@@ -84,6 +84,7 @@ end
 )
 
 Connects to Chrome browser at the given debugging endpoint with enhanced error handling.
+Returns a WSClient connected to a new page.
 
 # Arguments
 - `endpoint::String`: The URL of the Chrome debugging endpoint. Eg, `http://localhost:9222`.
@@ -101,48 +102,74 @@ function connect_browser(
         max_retries = max_retries, retry_delay = retry_delay, verbose = verbose) do
         verbose && @info "Connecting to browser" endpoint=endpoint
 
-        # Ensure Chrome is available
-        ensure_browser_available(endpoint; max_retries = 1, verbose = verbose) ||
-            error("Chrome browser not available at $endpoint")
+        # Ensure Chrome is available with more retries for startup
+        ensure_browser_available(endpoint; max_retries = max_retries, verbose = verbose) ||
+            throw(ConnectionError("Chrome browser not available at $endpoint"))
 
-        # Get or create a page target
-        page_target = get_or_create_page_target(endpoint; verbose = verbose)
+        # Get or create a page target with retry
+        local page_target
+        try
+            page_target = get_or_create_page_target(endpoint; verbose = verbose)
+        catch e
+            throw(ConnectionError("Failed to create page target: $(sprint(showerror, e))"))
+        end
 
         # Establish WebSocket connection
         ws_url = page_target["webSocketDebuggerUrl"]
         verbose && @debug "Creating WSClient" ws_url=ws_url target_id=page_target["id"]
 
-        client = WSClient(ws_url)
-        connect!(client; max_retries = 1, retry_delay = retry_delay, verbose = verbose)
+        client = WSClient(ws_url, endpoint)
+        try
+            connect!(client; max_retries = max_retries, retry_delay = retry_delay, verbose = verbose)
+        catch e
+            throw(ConnectionError("Failed to establish WebSocket connection: $(sprint(showerror, e))"))
+        end
+
+        # Enable required domains with proper error handling
+        try
+            send_cdp(client, "Page.enable", Dict())
+            send_cdp(client, "Runtime.enable", Dict())
+            send_cdp(client, "DOM.enable", Dict())
+        catch e
+            throw(ConnectionError("Failed to enable CDP domains: $(sprint(showerror, e))"))
+        end
 
         # Verify the connection
-        result = send_cdp(
-            client, "Browser.getVersion", Dict(); increment_id = false)
+        try
+            result = send_cdp(client, "Browser.getVersion", Dict(); increment_id = false)
+            haskey(result, "result") || throw(ConnectionError("Invalid response from Browser.getVersion"))
+            verbose && @info "Connected to browser" version=get(result["result"], "product", "unknown")
+        catch e
+            throw(ConnectionError("Failed to verify browser connection: $(sprint(showerror, e))"))
+        end
 
-        haskey(result, "result") || error("Failed to verify browser connection")
-
-        verbose &&
-            @info "Connected to browser" version=get(result["result"], "product", "unknown")
         return client
     end
 
-    return Browser(endpoint, client)
+    # Initialize browser state with proper error handling
+    try
+        send_cdp(client, "Page.navigate", Dict("url" => "about:blank"))
+    catch e
+        @warn "Failed to navigate to blank page" exception=e
+    end
+
+    return client
 end
 
 """
-    goto(browser::Browser, url::String; verbose::Bool=false)
+    goto(client::WSClient, url::String; verbose::Bool=false)
 
-Navigate to the specified URL using the browser's client.
+Navigate to the specified URL using the client's page.
 """
-function goto(browser::Browser, url::String; verbose::Bool=false)
-    goto(browser.client, url; verbose=verbose)
+function goto(client::WSClient, url::String; verbose::Bool=false)
+    goto(get_page(client), url; verbose=verbose)
 end
 
 """
-    close(browser::Browser)
+    close(client::WSClient)
 
-Close the browser connection by closing its WebSocket client.
+Close the browser connection.
 """
-function Base.close(browser::Browser)
-    close(browser.client)
+function Base.close(client::WSClient)
+    close(get_page(client))
 end

@@ -37,20 +37,26 @@ const CONNECTION_TIMEOUT = 5.0
 export extract_cdp_result, extract_element_result, with_retry
 include("utils.jl")
 
-# Include types first
+# Include base types first
 export WSClient, ElementHandle, Page
 export ElementNotFoundError, NavigationError, EvaluationError, TimeoutError, ConnectionError
 include("types.jl")
 
-# Include core functionality
+# Include core functionality that depends on types
 export connect!, send_cdp, close, handle_event, is_connected, try_connect
 include("websocket.jl")
+
+# Include page functionality
+export goto, evaluate, screenshot, content
+export get_target_info, update_page!, get_page_info, get_page
+export get_viewport, set_viewport, query_selector, query_selector_all, get_element_info
+export new_context, new_page, get_all_pages
+include("page.jl")
 
 export connect_browser, ensure_browser_available
 include("browser.jl")
 
-export goto, evaluate, screenshot, content
-include("page.jl")
+include("browser_context.jl")
 
 # Include input functionality before element handling
 export click, dblclick, move_mouse, get_mouse_position, press_key, type_text, get_element_position

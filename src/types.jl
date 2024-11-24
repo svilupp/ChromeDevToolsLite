@@ -10,6 +10,7 @@ WebSocket client for Chrome DevTools Protocol communication.
 - `message_channel::Channel{Dict{String, Any}}`: Channel for message communication
 - `next_id::Int`: Counter for message IDs
 - `page_loaded::Bool`: Flag indicating if the page has finished loading
+- `endpoint::String`: The debugging endpoint URL
 """
 mutable struct WSClient
     ws::Union{WebSocket, Nothing}
@@ -18,38 +19,11 @@ mutable struct WSClient
     message_channel::Channel{Dict{String, Any}}
     next_id::Int
     page_loaded::Bool
-
-    function WSClient(ws_url::String)
-        new(nothing, ws_url, false, Channel{Dict{String, Any}}(100), 1, false)
-    end
-end
-
-"""
-    Browser
-
-Represents a Chrome browser instance with its debugging endpoint and client.
-
-# Fields
-- `endpoint::String`: The debugging endpoint URL
-- `client::WSClient`: The WebSocket client for communication
-"""
-struct Browser
     endpoint::String
-    client::WSClient
-end
 
-"""
-    Page
-
-Represents a browser page/tab with its associated WebSocket client.
-
-# Fields
-- `client::WSClient`: The WebSocket client for communication
-- `target_id::String`: The unique identifier for this page/tab
-"""
-struct Page
-    client::WSClient
-    target_id::String
+    function WSClient(ws_url::String, endpoint::String="")
+        new(nothing, ws_url, false, Channel{Dict{String, Any}}(100), 1, false, endpoint)
+    end
 end
 
 """
@@ -63,6 +37,9 @@ struct ElementHandle
     verbose::Bool
     function ElementHandle(client::WSClient, selector::String; verbose::Bool = false)
         new(client, selector, verbose)
+    end
+    function ElementHandle(page::Page, selector::String; verbose::Bool = false)
+        new(page.client, selector, verbose)
     end
 end
 
