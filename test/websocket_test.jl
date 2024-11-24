@@ -10,14 +10,14 @@
     @test client.is_connected == true
 
     # Enable necessary domains with error checking
-    enable_page = send_cdp_message(client, "Page.enable")
+    enable_page = send_cdp(client, "Page.enable")
     @test haskey(enable_page, "result")
 
-    enable_runtime = send_cdp_message(client, "Runtime.enable")
+    enable_runtime = send_cdp(client, "Runtime.enable")
     @test haskey(enable_runtime, "result")
 
     # Test page navigation
-    response = send_cdp_message(
+    response = send_cdp(
         client, "Page.navigate", Dict{String, Any}("url" => "https://www.example.com"))
     @test haskey(response, "result") || error("Navigation failed: $response")
     @test haskey(response["result"], "frameId") ||
@@ -27,7 +27,7 @@
     sleep(2)  # Add reasonable wait time for page load
 
     # Test JavaScript evaluation
-    eval_response = send_cdp_message(client, "Runtime.evaluate",
+    eval_response = send_cdp(client, "Runtime.evaluate",
         Dict{String, Any}(
             "expression" => "document.title",
             "returnByValue" => true
@@ -43,9 +43,9 @@
     title = eval_response["result"]["result"]["value"]
     @test title == "Example Domain" || error("Unexpected page title: $title")
 
-    ## Connection Timeout test 
+    ## Connection Timeout test
     # Test connection timeout
-    @test_throws TimeoutError send_cdp_message(client, "Runtime.evaluate",
+    @test_throws TimeoutError send_cdp(client, "Runtime.evaluate",
         Dict{String, Any}(
             "expression" => """
                 new Promise((resolve) => {

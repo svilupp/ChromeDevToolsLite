@@ -27,14 +27,12 @@ using HTTP
 using JSON3
 using HTTP.WebSockets
 import HTTP.WebSockets: WebSocketError
+import Base: close, show
 using Logging
 
 const MAX_RETRIES = 3
 const RETRY_DELAY = 2.0
 const CONNECTION_TIMEOUT = 5.0
-
-# Import Base operations
-import Base: close, show
 
 export extract_cdp_result, extract_element_result, with_retry
 include("utils.jl")
@@ -45,7 +43,7 @@ export ElementNotFoundError, NavigationError, EvaluationError, TimeoutError, Con
 include("types.jl")
 
 # Include core functionality
-export connect!, send_cdp_message, send_command, close, handle_event, is_connected, try_connect
+export connect!, send_cdp, close, handle_event, is_connected, try_connect
 include("websocket.jl")
 
 export connect_browser, ensure_browser_available

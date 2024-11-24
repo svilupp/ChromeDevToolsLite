@@ -124,7 +124,7 @@ function connect!(client::WSClient; max_retries::Int = MAX_RETRIES,
 end
 
 """
-    send_cdp_message(
+    send_cdp(
         client::WSClient, method::String, params::Dict = Dict();
         increment_id::Bool = true, timeout::Real = CONNECTION_TIMEOUT)
 
@@ -143,7 +143,7 @@ Send a Chrome DevTools Protocol message and wait for the response.
 # Throws
 - `TimeoutError`: If response times out
 """
-function send_cdp_message(
+function send_cdp(
         client::WSClient, method::String, params::Dict = Dict();
         increment_id::Bool = true, timeout::Real = CONNECTION_TIMEOUT)
     if !client.is_connected || isnothing(client.ws)

@@ -4,7 +4,7 @@
 
     @testset "CDP Commands" begin
         @debug "Testing Page.enable command"
-        response = send_cdp_message(client, "Page.enable")
+        response = send_cdp(client, "Page.enable")
         @test isa(response, Dict)
         @test haskey(response, "id")
         @test haskey(response, "result")
@@ -12,11 +12,11 @@
 
     @testset "Page Navigation" begin
         @debug "Enabling required domains"
-        send_cdp_message(client, "Page.enable")
-        send_cdp_message(client, "Runtime.enable")
+        send_cdp(client, "Page.enable")
+        send_cdp(client, "Runtime.enable")
 
         @debug "Navigating to example.com"
-        response = send_cdp_message(
+        response = send_cdp(
             client, "Page.navigate", Dict{String, Any}("url" => "https://example.com"))
         @test haskey(response, "result")
         @test haskey(response["result"], "frameId")
@@ -24,7 +24,7 @@
         sleep(1)  # Wait for page load
 
         @debug "Evaluating page title"
-        eval_response = send_cdp_message(client, "Runtime.evaluate",
+        eval_response = send_cdp(client, "Runtime.evaluate",
             Dict{String, Any}(
                 "expression" => "document.title",
                 "returnByValue" => true
@@ -39,13 +39,13 @@
 
     @testset "Screenshots" begin
         # Enable Page domain and navigate
-        send_cdp_message(client, "Page.enable")
-        send_cdp_message(
+        send_cdp(client, "Page.enable")
+        send_cdp(
             client, "Page.navigate", Dict{String, Any}("url" => "https://example.com"))
         sleep(1)
 
         # Take screenshot
-        response = send_cdp_message(client, "Page.captureScreenshot")
+        response = send_cdp(client, "Page.captureScreenshot")
         @test haskey(response, "result")
         @test haskey(response["result"], "data")
     end

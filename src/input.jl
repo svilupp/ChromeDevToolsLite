@@ -2,10 +2,6 @@
     Mouse and keyboard input functionality for ChromeDevToolsLite
 """
 
-import ..ChromeDevToolsLite: WSClient, send_command
-import ..ChromeDevToolsLite.evaluate
-import JSON3
-
 # Mouse Actions
 """
     click(client::WSClient; button::String="left", x::Union{Int,Nothing}=nothing, y::Union{Int,Nothing}=nothing, modifiers::Vector{String}=String[])
@@ -42,12 +38,12 @@ function click(client::WSClient; button::String="left", x::Union{Int,Nothing}=no
         params["x"] = x
         params["y"] = y
         # Move to specified position first
-        send_command(client, "Input.dispatchMouseEvent", merge(params, Dict("type" => "mouseMoved")))
+        send_cdp(client, "Input.dispatchMouseEvent", merge(params, Dict("type" => "mouseMoved")))
     end
 
     # Click sequence: mousePressed -> mouseReleased
-    send_command(client, "Input.dispatchMouseEvent", merge(params, Dict("type" => "mousePressed")))
-    send_command(client, "Input.dispatchMouseEvent", merge(params, Dict("type" => "mouseReleased")))
+    send_cdp(client, "Input.dispatchMouseEvent", merge(params, Dict("type" => "mousePressed")))
+    send_cdp(client, "Input.dispatchMouseEvent", merge(params, Dict("type" => "mouseReleased")))
 end
 
 """
@@ -72,7 +68,7 @@ function move_mouse(client::WSClient, x::Int, y::Int)
     """)
 
     # Dispatch CDP mouse move event
-    send_command(client, "Input.dispatchMouseEvent", Dict(
+    send_cdp(client, "Input.dispatchMouseEvent", Dict(
         "type" => "mouseMoved",
         "x" => x,
         "y" => y
@@ -156,8 +152,8 @@ function press_key(client::WSClient, key::String; modifiers::Vector{String}=Stri
         "modifiers" => modifier_flags
     )
 
-    send_command(client, "Input.dispatchKeyEvent", merge(params, Dict("type" => "keyDown")))
-    send_command(client, "Input.dispatchKeyEvent", merge(params, Dict("type" => "keyUp")))
+    send_cdp(client, "Input.dispatchKeyEvent", merge(params, Dict("type" => "keyDown")))
+    send_cdp(client, "Input.dispatchKeyEvent", merge(params, Dict("type" => "keyUp")))
 end
 
 """
@@ -188,6 +184,3 @@ function type_text(client::WSClient, text::String, element_handle::Union{String,
         press_key(client, text)
     end
 end
-
-# Export functions
-export click, dblclick, move_mouse, get_mouse_position, press_key, type_text, get_element_position

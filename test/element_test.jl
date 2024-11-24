@@ -6,7 +6,7 @@ Wait for DOM to be ready with timeout.
 function wait_for_dom_ready(client::WSClient, timeout::Float64 = 5.0)
     start_time = time()
     while (time() - start_time) < timeout
-        result = send_cdp_message(client,
+        result = send_cdp(client,
             "Runtime.evaluate",
             Dict{String, Any}(
                 "expression" => "document.readyState === 'complete'",
@@ -23,7 +23,7 @@ end
 # Helper function for element checks
 function verify_element_exists(client, selector)
     @debug "Verifying element existence" selector
-    result = send_cdp_message(client,
+    result = send_cdp(client,
         "Runtime.evaluate",
         Dict{String, Any}(
             "expression" => "!!document.querySelector('$(selector)')",
@@ -38,13 +38,13 @@ end
     client = connect_browser(ENDPOINT)
 
     # Enable required domains
-    send_cdp_message(client, "DOM.enable", Dict{String, Any}())
-    send_cdp_message(client, "Page.enable", Dict{String, Any}())
-    send_cdp_message(client, "Runtime.enable", Dict{String, Any}())
+    send_cdp(client, "DOM.enable", Dict{String, Any}())
+    send_cdp(client, "Page.enable", Dict{String, Any}())
+    send_cdp(client, "Runtime.enable", Dict{String, Any}())
 
     # Initialize blank page with verification
     @info "Navigating to blank page"
-    send_cdp_message(client, "Page.navigate", Dict{String, Any}("url" => "about:blank"))
+    send_cdp(client, "Page.navigate", Dict{String, Any}("url" => "about:blank"))
     @test wait_for_dom_ready(client)
 
     # Create test page content with debug logging
@@ -67,7 +67,7 @@ end
     """
 
     @info "Injecting test content"
-    result = send_cdp_message(client,
+    result = send_cdp(client,
         "Runtime.evaluate",
         Dict{String, Any}(
             "expression" => """

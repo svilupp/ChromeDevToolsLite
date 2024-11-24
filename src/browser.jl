@@ -116,7 +116,7 @@ function connect_browser(
         connect!(client; max_retries = 1, retry_delay = retry_delay, verbose = verbose)
 
         # Verify the connection
-        result = send_cdp_message(
+        result = send_cdp(
             client, "Browser.getVersion", Dict(); increment_id = false)
 
         haskey(result, "result") || error("Failed to verify browser connection")
@@ -127,15 +127,4 @@ function connect_browser(
     end
 
     return client
-end
-
-"""
-    send_command(client::WSClient, method::String, params::Dict = Dict())
-
-Send a Chrome DevTools Protocol command and return the result.
-This is a simplified wrapper around send_cdp_message.
-"""
-function send_command(client::WSClient, method::String, params::Dict = Dict())
-    response = send_cdp_message(client, method, params)
-    return get(response, "result", Dict())
 end

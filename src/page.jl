@@ -14,10 +14,10 @@ Navigate to the specified URL and wait for page load.
 function goto(client::WSClient, url::String; verbose::Bool = false)
     verbose && @debug "Navigating to URL" url=url
     # Enable page domain first
-    send_cdp_message(client, "Page.enable", Dict{String, Any}())
+    send_cdp(client, "Page.enable", Dict{String, Any}())
 
     # Navigate to URL
-    result = send_cdp_message(client, "Page.navigate", Dict{String, Any}("url" => url))
+    result = send_cdp(client, "Page.navigate", Dict{String, Any}("url" => url))
 
     # Check for navigation errors
     if haskey(result, "errorText")
@@ -31,7 +31,7 @@ function goto(client::WSClient, url::String; verbose::Bool = false)
     end
 
     # Enable runtime for JavaScript evaluation
-    send_cdp_message(client, "Runtime.enable", Dict{String, Any}())
+    send_cdp(client, "Runtime.enable", Dict{String, Any}())
 
     verbose && @info "Page navigation completed" url=url
     return nothing
@@ -88,7 +88,7 @@ Evaluate JavaScript in the page context and return the result.
 """
 function evaluate(client::WSClient, expression::String; verbose::Bool = false)
     verbose && @debug "Evaluating JavaScript" expression=expression
-    response = send_cdp_message(
+    response = send_cdp(
         client, "Runtime.evaluate", Dict{String, Any}("expression" => expression))
 
     result = extract_element_result(response)
@@ -112,8 +112,8 @@ Take a screenshot of the current page.
 function screenshot(client::WSClient; verbose::Bool = false)
     verbose && @debug "Taking page screenshot"
     # Enable page domain if not already enabled
-    send_cdp_message(client, "Page.enable", Dict{String, Any}())
-    result = send_cdp_message(client, "Page.captureScreenshot", Dict{String, Any}())
+    send_cdp(client, "Page.enable", Dict{String, Any}())
+    result = send_cdp(client, "Page.captureScreenshot", Dict{String, Any}())
     if result isa Dict && haskey(result, "result") && haskey(result["result"], "data")
         verbose && @debug "Screenshot captured successfully"
         return result["result"]["data"]
@@ -157,7 +157,7 @@ Useful for evaluating expressions that return DOM elements or complex objects.
 """
 function evaluate_handle(client::WSClient, expression::String; verbose::Bool = false)
     verbose && @debug "Evaluating JavaScript for handle" expression=expression
-    response = send_cdp_message(
+    response = send_cdp(
         client, "Runtime.evaluate",
         Dict{String, Any}(
             "expression" => expression,

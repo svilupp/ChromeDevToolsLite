@@ -5,7 +5,7 @@ Click an element.
 """
 function click(element::ElementHandle; options = Dict())
     element.verbose && @debug "Attempting to click element" selector=element.selector
-    result = send_cdp_message(element.client,
+    result = send_cdp(element.client,
         "Runtime.evaluate",
         Dict{String, Any}(
             "expression" => """
@@ -39,11 +39,11 @@ end
 """
     type_text(element::ElementHandle, text::String; options=Dict())
 
-Type text into an element.
+Type text into an element using JavaScript.
 """
 function type_text(element::ElementHandle, text::String; options = Dict())
     element.verbose && @debug "Attempting to type text" selector=element.selector text=text
-    result = send_cdp_message(element.client,
+    result = send_cdp(element.client,
         "Runtime.evaluate",
         Dict(
             "expression" => """
@@ -54,8 +54,9 @@ function type_text(element::ElementHandle, text::String; options = Dict())
                         return false;
                     }
                     el.focus();
-                    // Clear existing value
-                    el.value = '';
+                    el.value = '$(text)';
+                    el.dispatchEvent(new Event('input', { bubbles: true }));
+                    el.dispatchEvent(new Event('change', { bubbles: true }));
                     return true;
                 })()
             """,
@@ -66,25 +67,6 @@ function type_text(element::ElementHandle, text::String; options = Dict())
         element.verbose && @info "Type text operation failed - element not found" selector=element.selector
         return false
     end
-
-    # Use CDP to type text
-    type_text(element.client, text)
-
-    # Ensure value is set and events are triggered
-    result = send_cdp_message(element.client,
-        "Runtime.evaluate",
-        Dict(
-            "expression" => """
-                (function() {
-                    const el = document.querySelector('$(element.selector)');
-                    el.value = '$(text)';
-                    el.dispatchEvent(new Event('input', { bubbles: true }));
-                    el.dispatchEvent(new Event('change', { bubbles: true }));
-                    return true;
-                })()
-            """,
-            "returnByValue" => true
-        ))
 
     element.verbose && @info "Type text operation completed" selector=element.selector
     return true
@@ -97,7 +79,7 @@ Check a checkbox or radio button element.
 """
 function check(element::ElementHandle; options = Dict())
     element.verbose && @debug "Attempting to check element" selector=element.selector
-    result = send_cdp_message(element.client,
+    result = send_cdp(element.client,
         "Runtime.evaluate",
         Dict(
             "expression" => """
@@ -132,7 +114,7 @@ Uncheck a checkbox element.
 """
 function uncheck(element::ElementHandle; options = Dict())
     element.verbose && @debug "Attempting to uncheck element" selector=element.selector
-    result = send_cdp_message(element.client,
+    result = send_cdp(element.client,
         "Runtime.evaluate",
         Dict{String, Any}(
             "expression" => """
@@ -168,7 +150,7 @@ Select an option in a select element by value.
 function select_option(element::ElementHandle, value::String; options = Dict())
     element.verbose &&
         @debug "Attempting to select option" selector=element.selector value=value
-    result = send_cdp_message(element.client,
+    result = send_cdp(element.client,
         "Runtime.evaluate",
         Dict{String, Any}(
             "expression" => """
@@ -199,7 +181,7 @@ Check if an element is visible.
 function is_visible(element::ElementHandle)
     element.verbose && @debug "Checking element visibility" selector=element.selector
     safe_selector = replace(element.selector, "'" => "\\'")
-    result = send_cdp_message(element.client,
+    result = send_cdp(element.client,
         "Runtime.evaluate",
         Dict{String, Any}(
             "expression" => """
@@ -235,7 +217,7 @@ Get the text content of an element.
 """
 function get_text(element::ElementHandle)
     element.verbose && @debug "Getting element text" selector=element.selector
-    result = send_cdp_message(element.client,
+    result = send_cdp(element.client,
         "Runtime.evaluate",
         Dict{String, Any}(
             "expression" => """
@@ -265,7 +247,7 @@ Get the value of an attribute on an element.
 function get_attribute(element::ElementHandle, name::String)
     element.verbose &&
         @debug "Getting element attribute" selector=element.selector attribute=name
-    result = send_cdp_message(element.client,
+    result = send_cdp(element.client,
         "Runtime.evaluate",
         Dict(
             "expression" => """
@@ -306,7 +288,7 @@ Assumed the element is variable `el`.
 function evaluate_handle(element::ElementHandle, expression::String)
     element.verbose &&
         @debug "Evaluating expression on element" selector=element.selector expression=expression
-    result = send_cdp_message(element.client,
+    result = send_cdp(element.client,
         "Runtime.evaluate",
         Dict{String, Any}(
             "expression" => """
