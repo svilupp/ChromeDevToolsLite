@@ -13,7 +13,7 @@
     @testset "Domain Enabling" begin
         for domain in ["Page", "Runtime", "Network"]
             response = nothing
-            @test_nowarn for _ in 1:3
+            for _ in 1:3
                 try
                     response = send_cdp(client, "$(domain).enable")
                     break
@@ -21,6 +21,7 @@
                     sleep(1)
                 end
             end
+            @test response isa Dict
             @test haskey(response, "result")
         end
     end

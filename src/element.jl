@@ -17,6 +17,9 @@ function click(element::ElementHandle; options = Dict())
                     }
                     // Ensure element is in viewport
                     el.scrollIntoView({behavior: 'instant', block: 'center'});
+                    // Simulate click events
+                    el.focus();
+                    el.click();
                     return true;
                 })()
             """,
@@ -28,11 +31,6 @@ function click(element::ElementHandle; options = Dict())
             @info "Click operation failed - element not found" selector=element.selector
         return false
     end
-
-    # Get element position and perform CDP click
-    pos = get_element_position(element.client, element.selector)
-    click(element.client; x = pos.x, y = pos.y)
-
     element.verbose && @info "Click operation completed" selector=element.selector
     return true
 end
@@ -44,21 +42,23 @@ Type text into an element using JavaScript.
 """
 function type_text(element::ElementHandle, text::String; options = Dict())
     element.verbose && @debug "Attempting to type text" selector=element.selector text=text
+    safe_selector = replace(element.selector, "'" => "\\'")
+    safe_text = replace(text, "'" => "\\'")
     result = send_cdp(element.client,
         "Runtime.evaluate",
         Dict(
             "expression" => """
                 (function() {
-                    const el = document.querySelector('$(element.selector)');
+                    const el = document.querySelector('$(safe_selector)');
                     if (!el || !el.isConnected) {
                         console.error('Element not found or not connected to DOM');
                         return false;
                     }
                     el.focus();
-                    el.value = '$(text)';
+                    el.value = '$(safe_text)';
                     el.dispatchEvent(new Event('input', { bubbles: true }));
                     el.dispatchEvent(new Event('change', { bubbles: true }));
-                    return true;
+                    return el.value === '$(safe_text)';
                 })()
             """,
             "returnByValue" => true

@@ -4,7 +4,8 @@
 
 # Mouse Actions
 """
-    click(client::WSClient; button::String="left", x::Union{Int,Nothing}=nothing, y::Union{Int,Nothing}=nothing, modifiers::Vector{String}=String[])
+    click(client::WSClient; button::String = "left", x::Union{Int, Nothing} = nothing,
+        y::Union{Int, Nothing} = nothing, modifiers::Vector{String} = String[], verbose::Bool = false)
 
 Perform a mouse click action at the specified coordinates or current mouse position.
 
@@ -16,7 +17,7 @@ Perform a mouse click action at the specified coordinates or current mouse posit
 - `modifiers::Vector{String}=String[]`: Keyboard modifiers (e.g., ["Shift", "Control"])
 """
 function click(client::WSClient; button::String = "left", x::Union{Int, Nothing} = nothing,
-        y::Union{Int, Nothing} = nothing, modifiers::Vector{String} = String[])
+        y::Union{Int, Nothing} = nothing, modifiers::Vector{String} = String[], verbose::Bool = false)
     # Convert modifiers to integer flags as per CDP spec
     modifier_map = Dict(
         "Alt" => 1,
@@ -47,21 +48,28 @@ function click(client::WSClient; button::String = "left", x::Union{Int, Nothing}
     )
 
     # Click sequence: mousePressed -> mouseReleased
-    send_cdp(
+    result = send_cdp(
         client, "Input.dispatchMouseEvent", merge(params, Dict("type" => "mousePressed")))
-    send_cdp(
+    result = send_cdp(
         client, "Input.dispatchMouseEvent", merge(params, Dict("type" => "mouseReleased")))
+    if haskey(result, "error")
+        verbose && @info "Click operation failed"
+        return false
+    end
+    verbose && @info "Click operation completed"
+    return true
 end
 
 """
-    dblclick(client::WSClient; x::Union{Int,Nothing}=nothing, y::Union{Int,Nothing}=nothing)
+    dblclick(client::WSClient; x::Union{Int, Nothing} = nothing,
+        y::Union{Int, Nothing} = nothing, verbose::Bool = false)
 
 Perform a double-click action at the specified coordinates or current mouse position.
 """
 function dblclick(client::WSClient; x::Union{Int, Nothing} = nothing,
-        y::Union{Int, Nothing} = nothing)
-    click(client; x = x, y = y)
-    click(client; x = x, y = y)
+        y::Union{Int, Nothing} = nothing, verbose::Bool = false)
+    click(client; x = x, y = y, verbose = verbose)
+    click(client; x = x, y = y, verbose = verbose)
 end
 
 """
@@ -69,19 +77,25 @@ end
 
 Move the mouse cursor to the specified coordinates.
 """
-function move_mouse(client::WSClient, x::Int, y::Int)
+function move_mouse(client::WSClient, x::Int, y::Int, verbose::Bool = false)
     # Update stored mouse position
     evaluate(client, """
         window.mousePosition = { x: $(x), y: $(y) };
     """)
 
     # Dispatch CDP mouse move event
-    send_cdp(client, "Input.dispatchMouseEvent",
+    result = send_cdp(client, "Input.dispatchMouseEvent",
         Dict(
             "type" => "mouseMoved",
             "x" => x,
             "y" => y
         ))
+    if haskey(result, "error")
+        verbose && @info "Mouse move operation failed"
+        return false
+    end
+    verbose && @info "Mouse moved to $(x), $(y)"
+    return true
 end
 
 """
@@ -134,7 +148,8 @@ end
 
 # Keyboard Actions
 """
-    press_key(client::WSClient, key::String; modifiers::Vector{String}=String[])
+    press_key(client::WSClient, key::String; modifiers::Vector{String} = String[],
+        verbose::Bool = false)
 
 Press and release a keyboard key.
 
@@ -142,8 +157,10 @@ Press and release a keyboard key.
 - `client::WSClient`: The WebSocket client to perform the action on
 - `key::String`: Key to press (e.g., "a", "Enter", "ArrowUp")
 - `modifiers::Vector{String}=String[]`: Keyboard modifiers (e.g., ["Shift", "Control"])
+- `verbose::Bool=false`: Whether to print verbose output
 """
-function press_key(client::WSClient, key::String; modifiers::Vector{String} = String[])
+function press_key(client::WSClient, key::String; modifiers::Vector{String} = String[],
+        verbose::Bool = false)
     # Convert modifiers to integer flags as per CDP spec
     modifier_map = Dict(
         "Alt" => 1,
@@ -161,36 +178,35 @@ function press_key(client::WSClient, key::String; modifiers::Vector{String} = St
         "modifiers" => modifier_flags
     )
 
-    send_cdp(client, "Input.dispatchKeyEvent", merge(params, Dict("type" => "keyDown")))
-    send_cdp(client, "Input.dispatchKeyEvent", merge(params, Dict("type" => "keyUp")))
+    result = send_cdp(
+        client, "Input.dispatchKeyEvent", merge(params, Dict("type" => "keyDown")))
+    result = send_cdp(
+        client, "Input.dispatchKeyEvent", merge(params, Dict("type" => "keyUp")))
+    if haskey(result, "error")
+        verbose && @info "Key press operation failed"
+        return false
+    end
+    verbose && @info "Key press operation completed"
+    return true
 end
 
 """
-    type_text(client::WSClient, text::String, element_handle::Union{String,Nothing}=nothing)
+    type_text(client::WSClient, text::String; modifiers::Vector{String} = String[],
+        verbose::Bool = false)
 
-Type text either globally or into a specific element.
+Type text by simulating keyboard input for each character.
 
 # Arguments
 - `client::WSClient`: The WebSocket client to perform the action on
 - `text::String`: Text to type
-- `element_handle::Union{String,Nothing}=nothing`: Optional CSS selector for target element
+- `modifiers::Vector{String}=String[]`: Keyboard modifiers (e.g., ["Shift", "Control"])
+- `verbose::Bool=false`: Whether to print verbose output
 """
-function type_text(
-        client::WSClient, text::String, element_handle::Union{String, Nothing} = nothing)
-    if !isnothing(element_handle)
-        script = """
-        (function() {
-            const element = document.querySelector('$(element_handle)');
-            if (!element) return false;
-            element.value = '$(text)';
-            element.dispatchEvent(new Event('input', { bubbles: true }));
-            element.dispatchEvent(new Event('change', { bubbles: true }));
-            return true;
-        })()
-        """
-        success = evaluate(client, script)
-        !success && error("Element not found: $(element_handle)")
-    else
-        press_key(client, text)
+function type_text(client::WSClient, text::String; modifiers::Vector{String} = String[],
+        verbose::Bool = false)
+    for char in collect(text)
+        output = press_key(client, string(char); modifiers = modifiers, verbose = verbose)
+        output || return false
     end
+    return true
 end
