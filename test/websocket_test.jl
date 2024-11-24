@@ -1,22 +1,3 @@
-# Helper function for robust page load waiting
-function wait_for_load_event(client; timeout = 15)
-    start_time = time()
-    while (time() - start_time) < timeout
-        try
-            response = send_cdp(client, "Runtime.evaluate",
-                Dict("expression" => "document.readyState", "returnByValue" => true))
-            if get(get(get(response, "result", Dict()), "result", Dict()), "value", "") ==
-               "complete"
-                return true
-            end
-        catch e
-            @debug "Wait for load error (non-critical)" exception=e
-        end
-        sleep(0.5)
-    end
-    return false
-end
-
 @testset "WebSocket Connection Tests" begin
     # Test basic connection
     client = connect_browser(ENDPOINT)
@@ -52,7 +33,7 @@ end
         @test haskey(response["result"], "frameId")
 
         # Wait for page load with timeout
-        @test wait_for_load_event(client)
+        @test wait_for_ready_state(client)
 
         # Test JavaScript evaluation
         eval_response = send_cdp(client, "Runtime.evaluate",

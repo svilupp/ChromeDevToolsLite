@@ -83,7 +83,7 @@ function setup_test()
     sleep(0.5)  # Give Chrome time to stabilize
 
     # Ensure Chrome is ready
-    @assert ensure_browser_available(ENDPOINT; max_retries = 3, retry_delay = 2.0)
+    @assert ensure_browser_available(ENDPOINT; max_retries = 10, retry_delay = 2.0)
 
     # Connect with retry
     client = connect_browser(ENDPOINT)
