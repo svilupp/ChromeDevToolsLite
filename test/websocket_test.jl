@@ -1,3 +1,21 @@
+# Helper function for robust page load waiting
+function wait_for_load_event(client; timeout=15)
+    start_time = time()
+    while (time() - start_time) < timeout
+        try
+            response = send_cdp(client, "Runtime.evaluate",
+                Dict("expression" => "document.readyState", "returnByValue" => true))
+            if get(get(get(response, "result", Dict()), "result", Dict()), "value", "") == "complete"
+                return true
+            end
+        catch e
+            @debug "Wait for load error (non-critical)" exception=e
+        end
+        sleep(0.5)
+    end
+    return false
+end
+
 @testset "WebSocket Connection Tests" begin
     # Test basic connection
     client = connect_browser(ENDPOINT)
@@ -9,52 +27,75 @@
     # Test connection status
     @test client.is_connected == true
 
-    # Enable necessary domains with error checking
-    enable_page = send_cdp(client, "Page.enable")
-    @test haskey(enable_page, "result")
+    # Test reconnection capability
+    @testset "Connection Recovery" begin
+        # Force connection drop
+        close(client.ws)
+        sleep(1)
 
-    enable_runtime = send_cdp(client, "Runtime.enable")
-    @test haskey(enable_runtime, "result")
+        # Test auto-reconnect on command
+        response = send_cdp(client, "Page.enable")
+        @test haskey(response, "result")
+        @test client.is_connected
+    end
 
-    # Test page navigation
-    response = send_cdp(
-        client, "Page.navigate", Dict{String, Any}("url" => "https://www.example.com"))
-    @test haskey(response, "result") || error("Navigation failed: $response")
-    @test haskey(response["result"], "frameId") ||
-          error("No frameId in response: $response")
+    # Test domain enabling with retry
+    @testset "Domain Enabling" begin
+        for domain in ["Page", "Runtime", "Network"]
+            response = nothing
+            @test_nowarn for _ in 1:3
+                try
+                    response = send_cdp(client, "$(domain).enable")
+                    break
+                catch
+                    sleep(1)
+                end
+            end
+            @test haskey(response, "result")
+        end
+    end
 
-    # Wait for page load event
-    sleep(2)  # Add reasonable wait time for page load
+    @testset "Navigation and Evaluation" begin
+        # Navigate with proper error handling and waiting
+        response = send_cdp(
+            client, "Page.navigate", Dict{String, Any}("url" => "https://www.example.com"))
+        @test haskey(response, "result")
+        @test haskey(response["result"], "frameId")
 
-    # Test JavaScript evaluation
-    eval_response = send_cdp(client, "Runtime.evaluate",
-        Dict{String, Any}(
-            "expression" => "document.title",
-            "returnByValue" => true
-        ))
+        # Wait for page load with timeout
+        @test wait_for_load_event(client)
 
-    @test haskey(eval_response, "result") ||
-          error("JavaScript evaluation failed: $(eval_response)")
-    @test haskey(eval_response["result"], "result") ||
-          error("No result in evaluation response: $(eval_response)")
-    @test haskey(eval_response["result"]["result"], "value") ||
-          error("No value in evaluation result: $(eval_response["result"])")
+        # Test JavaScript evaluation
+        eval_response = send_cdp(client, "Runtime.evaluate",
+            Dict{String, Any}(
+                "expression" => "document.title",
+                "returnByValue" => true
+            ))
 
-    title = eval_response["result"]["result"]["value"]
-    @test title == "Example Domain" || error("Unexpected page title: $title")
+        @test haskey(eval_response, "result") ||
+              error("JavaScript evaluation failed: $(eval_response)")
+        @test haskey(eval_response["result"], "result") ||
+              error("No result in evaluation response: $(eval_response)")
+        @test haskey(eval_response["result"]["result"], "value") ||
+              error("No value in evaluation result: $(eval_response["result"])")
 
-    ## Connection Timeout test
-    # Test connection timeout
-    @test_throws TimeoutError send_cdp(client, "Runtime.evaluate",
-        Dict{String, Any}(
-            "expression" => """
-                new Promise((resolve) => {
-                    // Sleep longer than CONNECTION_TIMEOUT
-                    setTimeout(resolve, 1000);
-                });
-            """,
-            "awaitPromise" => true
-        ), timeout = 0.1)
+        title = eval_response["result"]["result"]["value"]
+        @test title == "Example Domain" || error("Unexpected page title: $title")
+    end
+
+    @testset "Timeout Handling" begin
+        # Test various timeout scenarios
+        @test_throws TimeoutError send_cdp(client, "Runtime.evaluate",
+            Dict{String, Any}(
+                "expression" => "new Promise(r => setTimeout(r, 1000))",
+                "awaitPromise" => true
+            ), timeout = 0.1)
+
+        # Test recovery after timeout
+        response = send_cdp(client, "Runtime.evaluate",
+            Dict{String, Any}("expression" => "2 + 2", "returnByValue" => true))
+        @test haskey(response, "result")
+    end
 
     # Test connection closure
     close(client)

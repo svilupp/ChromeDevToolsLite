@@ -8,14 +8,22 @@ function setup_chrome(; endpoint = ENDPOINT)
     # First check if Chrome is already running on port 9222
     @info "Checking if Chrome is already running on port 9222..."
 
-    for _ in 1:3  # Try up to 3 times
+    # More robust Chrome process cleanup before starting
+    cleanup()
+    sleep(2.0)  # Give more time for cleanup
+
+    # Check if Chrome is already running with proper verification
+    for attempt in 1:5  # Increased retries
         try
-            response = HTTP.get("$endpoint/json/version", retry=false, readtimeout=10)
-            @info "Chrome already running on port 9222" version=String(response.body)
-            return true
+            response = HTTP.get("$endpoint/json/version", retry=false, readtimeout=15)
+            if response.status == 200
+                version_info = JSON3.read(String(response.body))
+                @info "Chrome running" version=get(version_info, "Browser", "unknown")
+                return true
+            end
         catch e
-            @debug "Chrome check failed, retrying..." exception=e
-            sleep(2.0)  # Wait before retry
+            @debug "Chrome check attempt $attempt failed" exception=e
+            sleep(3.0)  # Increased wait time between retries
         end
     end
 
@@ -56,54 +64,78 @@ function setup_chrome(; endpoint = ENDPOINT)
         @info "Chrome already installed"
     end
 
-    # Kill any existing Chrome instances
+    # Enhanced Chrome process management
     @info "Cleaning up any existing Chrome processes..."
     try
-        run(`pkill -f "google-chrome.*--remote-debugging-port"`)
-        sleep(3)  # Give more time for cleanup
+        run(`pkill -f "google-chrome"`)
+        run(`pkill -f "chromium"`)
+        sleep(5.0)  # Increased cleanup time
     catch e
-        @debug "No matching Chrome processes found" exception=e
+        @debug "Chrome process cleanup" exception=e
     end
 
-    # Start Chrome in debug mode with more robust options
+    # Start Chrome with enhanced stability options
     @info "Starting Chrome in debug mode..."
     cmd = pipeline(
-        `google-chrome --remote-debugging-port=9222 --headless=new --disable-gpu --no-sandbox --disable-software-rasterizer`,
+        `google-chrome --remote-debugging-port=9222 --headless=new --disable-gpu --no-sandbox --disable-dev-shm-usage --disable-software-rasterizer --no-first-run --no-default-browser-check --disable-extensions`,
         stdout=devnull,
         stderr=devnull
     )
     process = run(cmd, wait=false)
 
-    # Wait for Chrome to be ready
-    sleep(5.0)  # Give Chrome more time to start
-    return true
+    # More thorough Chrome readiness check
+    for _ in 1:10  # Increased number of attempts
+        try
+            response = HTTP.get("$endpoint/json/version", retry=false, readtimeout=5)
+            if response.status == 200
+                @info "Chrome started successfully"
+                return true
+            end
+        catch
+            sleep(1.0)
+        end
+    end
+
+    error("Failed to start Chrome after multiple attempts")
 end
 
-# Global cleanup function
+# Global cleanup function with enhanced process management
 function cleanup()
     try
         if Sys.islinux()
-            run(`pkill chrome`)
-            sleep(1)  # Give time for process to terminate
+            # Kill all Chrome-related processes
+            run(`pkill -f "google-chrome"`)
+            run(`pkill -f "chromium"`)
+            # Clean up any remaining Chrome temporary files
+            run(`rm -rf /tmp/.com.google.Chrome*`)
+            run(`rm -rf /tmp/.org.chromium*`)
+            sleep(3.0)  # Increased cleanup time
         end
-    catch
-        # Ignore cleanup errors
+    catch e
+        @debug "Cleanup error (non-critical)" exception=e
     end
 end
 
 function setup_test()
     @debug "Setting up test environment"
-    setup_chrome(; endpoint = ENDPOINT)
-    sleep(2.0)  # Increased sleep time to ensure Chrome is fully ready
 
-    # More robust browser availability check
-    for _ in 1:3
-        if ensure_browser_available(ENDPOINT; max_retries = 3, retry_delay = 2.0)
-            client = connect_browser(ENDPOINT)
-            @debug "Browser connection established"
-            return client
+    # Multiple setup attempts with proper cleanup between tries
+    for attempt in 1:3
+        try
+            cleanup()
+            setup_chrome(; endpoint = ENDPOINT)
+            sleep(3.0)  # Increased wait time for Chrome stability
+
+            if ensure_browser_available(ENDPOINT; max_retries = 5, retry_delay = 2.0)
+                client = connect_browser(ENDPOINT)
+                @debug "Browser connection established on attempt $attempt"
+                return client
+            end
+        catch e
+            @warn "Setup attempt $attempt failed" exception=e
+            cleanup()
+            sleep(2.0)
         end
-        sleep(1.0)
     end
 
     error("Failed to establish browser connection after multiple attempts")
