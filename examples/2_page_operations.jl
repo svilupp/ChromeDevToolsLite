@@ -38,7 +38,7 @@ try
 
     # Take a screenshot
     println("\n4. Screenshot")
-    screenshot(client, verbose = true)
+    screenshot(client; save_path = "screenshot.png", verbose = true)
     println("Screenshot saved (check current directory for 'screenshot.png')")
 
     println("\n5. Page Information")
@@ -62,7 +62,7 @@ try
     println("New tab info: ", page_info)
 
     # Customize viewport in new tab
-    set_viewport(new_tab, width = 1920, height = 1080)
+    set_viewport!(new_tab, width = 1920, height = 1080)
     println("Set viewport to 1920x1080")
 
     # Clean up by closing the new tab

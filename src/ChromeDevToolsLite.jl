@@ -29,6 +29,7 @@ using HTTP.WebSockets
 import HTTP.WebSockets: WebSocketError
 import Base: close, show
 using Logging
+using Base64
 
 const MAX_RETRIES = 3
 const RETRY_DELAY = 2.0

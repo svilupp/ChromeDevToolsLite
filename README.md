@@ -8,7 +8,8 @@
 A lightweight Julia package for browser automation using the Chrome DevTools Protocol (CDP). Inspired by Python's Playwright but providing just the essential functionality to get you started with browser automation in Julia.
 
 > [!WARNING]
-> This package is experimental and was developed with the help of Cognition's Devin. While it's great for supervised browser automation, never leave AI agents unsupervised when controlling your browser!
+> This package is experimental and was developed with the help of Cognition's [Devin](devin.ai). 
+> While it's great for supervised browser automation, never leave AI agents unsupervised when controlling your browser!
 
 ## Why ChromeDevToolsLite?
 
@@ -73,19 +74,19 @@ try
     # Navigate to a page and wait for load
     goto(client, "https://example.com")
 
-    # Wait for specific elements to be visible
-    wait_for_element(client, "h1")  # Wait for main heading
+    # Get the source content of the page
+    source = content(client)
 
-    # Get page information
-    page_info = Dict(
-        "title" => evaluate(client, "document.title"),
-        "url" => evaluate(client, "window.location.href"),
-        "source" => content(client)  # Get full HTML
-    )
+    # Wait for specific elements to be visible
+    wait_for_visible(client, "h1")  # Wait for main heading
+
+    # Get the current page
+    page = get_page(client)
+    page_info = get_page_info(page)
 
     # Find and interact with elements
     button = query_selector(client, "button")
-    wait_for_element_visible(client, button)  # Ensure button is visible
+    wait_for_visible(client, button)  # Ensure button is visible
 
     # Move mouse and click
     move_mouse(client, button)  # Move to element
@@ -96,40 +97,33 @@ try
     type_text(input, "Hello World!")
     press_key(client, "Enter")
 
-    # Take a screenshot
-    screenshot(client)
+    # Take a screenshot -- returns a base64 encoded string, optionally save to file
+    screenshot(client; save_path="screenshot.png")
 finally
     close(client)
 end
 ```
 
-## AI Integration Example
+## PromptingTools.jl Example
+
+To be updated...
 
 ```julia
 using ChromeDevToolsLite
-using Base64
-
-function ask_llm_about_page(screenshot_path, page_info)
-    # Your LLM integration code here
-    # eg., OpenAI.create_chat(...) or Anthropic.messages(...)
-end
+using PromptingTools
+using PromptingTools: pprint
 
 client = connect_browser()
 try
     # Navigate and wait for page load
     goto(client, "https://example.com")
 
-    # Gather page information
-    screenshot(client)
-    page_info = Dict(
-        "title" => evaluate(client, "document.title"),
-        "content" => content(client),
-        "url" => evaluate(client, "window.location.href")
-    )
+    # Get the screenshot
+    screenshot(client; save_path="screenshot.png")
 
-    # Ask LLM about the page
-    llm_response = ask_llm_about_page("screenshot.png", page_info)
-    println("LLM suggests: ", llm_response)
+    # Ask LLM about the page // ideally, define tools for computer use
+    msg = aitools("What's on this page?"; image_path="screenshot.png")
+    pprint(msg)
 finally
     close(client)
 end
@@ -253,11 +247,6 @@ julia --project=. examples/1_basic_connection.jl
    ```julia
    julia --project=. examples/1_basic_connection.jl
    ```
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
 ## Chrome Setup Guide
 
 ### Windows
