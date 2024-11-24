@@ -1,4 +1,5 @@
-# ChromeDevToolsLite 
+# ChromeDevToolsLite.jl
+
 [![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://svilupp.github.io/ChromeDevToolsLite.jl/stable/) 
 [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://svilupp.github.io/ChromeDevToolsLite.jl/dev/)
 [![Build Status](https://github.com/svilupp/ChromeDevToolsLite.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/svilupp/ChromeDevToolsLite.jl/actions/workflows/CI.yml?query=branch%3Amain)
@@ -11,7 +12,7 @@ A lightweight Julia package for browser automation using the Chrome DevTools Pro
 > This package is experimental and was developed with the help of Cognition's [Devin](devin.ai). 
 > While it's great for supervised browser automation, never leave AI agents unsupervised when controlling your browser!
 
-## Why ChromeDevToolsLite?
+## Why ChromeDevToolsLite.jl?
 
 - **Lightweight & Simple**: Focused on essential browser automation features
 - **Existing Browser Sessions**: Connect to already open Chrome windows (keep your login sessions!)
