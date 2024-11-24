@@ -1,51 +1,9 @@
-"""
-    wait_for_dom_ready(client::WSClient, timeout::Float64=5.0)
-
-Wait for DOM to be ready with timeout.
-"""
-function wait_for_dom_ready(client::WSClient, timeout::Float64 = 5.0)
-    start_time = time()
-    while (time() - start_time) < timeout
-        result = send_cdp_message(client,
-            "Runtime.evaluate",
-            Dict{String, Any}(
-                "expression" => "document.readyState === 'complete'",
-                "returnByValue" => true
-            ))
-        if get(get(get(result, "result", Dict()), "result", Dict()), "value", false)
-            return true
-        end
-        sleep(0.5)
-    end
-    return false
-end
-
-# Helper function for element checks
-function verify_element_exists(client, selector)
-    @debug "Verifying element existence" selector
-    result = send_cdp_message(client,
-        "Runtime.evaluate",
-        Dict{String, Any}(
-            "expression" => "!!document.querySelector('$(selector)')",
-            "returnByValue" => true
-        ))
-    exists = get(get(get(result, "result", Dict()), "result", Dict()), "value", false)
-    @debug "Element existence check result" selector exists
-    exists
-end
-
 @testset "Element Interactions" begin
     client = connect_browser(ENDPOINT)
 
-    # Enable required domains
-    send_cdp_message(client, "DOM.enable", Dict{String, Any}())
-    send_cdp_message(client, "Page.enable", Dict{String, Any}())
-    send_cdp_message(client, "Runtime.enable", Dict{String, Any}())
-
-    # Initialize blank page with verification
     @info "Navigating to blank page"
-    send_cdp_message(client, "Page.navigate", Dict{String, Any}("url" => "about:blank"))
-    @test wait_for_dom_ready(client)
+    send_cdp(client, "Page.navigate", Dict{String, Any}("url" => "about:blank"))
+    wait_for_ready_state(client; timeout = 10.0)  # Increased timeout
 
     # Create test page content with debug logging
     html_content = """
@@ -66,8 +24,9 @@ end
     </html>
     """
 
+    # Inject content
     @info "Injecting test content"
-    result = send_cdp_message(client,
+    result = send_cdp(client,
         "Runtime.evaluate",
         Dict{String, Any}(
             "expression" => """
@@ -77,17 +36,15 @@ end
             """,
             "returnByValue" => true
         ))
+    @test get(get(get(result, "result", Dict()), "result", Dict()), "value", false) === true
 
-    @test get(get(get(result, "result", Dict()), "result", Dict()), "value", false) ===
-          true
-
-    # Verify DOM readiness
-    sleep(1)
+    # Verify DOM readiness with increased timeout
+    sleep(2)  # Increased initial wait
     @info "Verifying DOM elements"
     selectors = ["#clickme", "#textinput", "#checkbox",
         "#dropdown", "#visible", "#hidden", "#withattr"]
     for selector in selectors
-        @test verify_element_exists(client, selector)
+        @test query_selector(client, selector) !== nothing
     end
 
     # Create element handles with verification
@@ -107,15 +64,19 @@ end
         @test evaluate_handle(elements["input"], "!!el") === true
 
         @test click(elements["button"])
+        sleep(0.5)  # Wait for click to register
         @test type_text(elements["input"], "Hello World")
+        sleep(0.5)  # Wait for text input
         @test evaluate_handle(elements["input"], "el.value") == "Hello World"
     end
 
     @testset "Checkbox Operations" begin
         @test !evaluate_handle(elements["checkbox"], "el.checked")
         @test check(elements["checkbox"])
+        sleep(0.5)  # Wait for state change
         @test evaluate_handle(elements["checkbox"], "el.checked")
         @test uncheck(elements["checkbox"])
+        sleep(0.5)  # Wait for state change
         @test !evaluate_handle(elements["checkbox"], "el.checked")
     end
 
@@ -127,10 +88,13 @@ end
     @testset "Visibility Tests" begin
         @test is_visible(elements["visible_div"])
         @test !is_visible(elements["hidden_div"])
+
+        pos = get_element_position(client, "#visible")
+        @test pos.x >= 0
+        @test pos.y >= 0
     end
 
     @testset "Text and Attribute Operations" begin
-        @info "Testing text and attribute operations"
         @test get_text(elements["visible_div"]) == "Visible Text"
         @test get_attribute(elements["attr_div"], "data-test") == "testvalue"
         @test get_attribute(elements["attr_div"], "nonexistent") === nothing

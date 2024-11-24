@@ -1,3 +1,6 @@
+LAUNCH_ARGS = ["--remote-debugging-port=9222", "--headless", "--disable-gpu",
+    "--no-sandbox", "--disable-software-rasterizer",
+    "--enable-features=NetworkService,NetworkServiceInProcess"]
 """
     setup_chrome(; endpoint = ENDPOINT)
 
@@ -51,12 +54,18 @@ function setup_chrome(; endpoint = ENDPOINT)
 
         # Start Chrome in debug mode with more robust options
         @info "Starting Chrome in debug mode..."
+        # cmd = pipeline(
+        #     `google-chrome $(join(LAUNCH_ARGS, " "))`,
+        #     stdout = devnull,
+        #     stderr = devnull
+        # )
         cmd = pipeline(
-            `google-chrome --remote-debugging-port=9222 --headless --disable-gpu --no-sandbox --disable-software-rasterizer`,
+            `google-chrome --remote-debugging-port=9222 --headless --disable-gpu --no-sandbox --disable-software-rasterizer --enable-features=NetworkService,NetworkServiceInProcess`,
             stdout = devnull,
             stderr = devnull
         )
         process = run(cmd, wait = false)
+        return true
     end
 end
 
@@ -65,6 +74,7 @@ function cleanup()
     try
         if Sys.islinux()
             run(`pkill chrome`)
+            run(`pkill -f "google-chrome.*--remote-debugging-port"`)
             sleep(1)  # Give time for process to terminate
         end
     catch
@@ -78,7 +88,7 @@ function setup_test()
     sleep(0.5)  # Give Chrome time to stabilize
 
     # Ensure Chrome is ready
-    @assert ensure_browser_available(ENDPOINT; max_retries = 3, retry_delay = 2.0)
+    @assert ensure_browser_available(ENDPOINT; max_retries = 10, retry_delay = 2.0)
 
     # Connect with retry
     client = connect_browser(ENDPOINT)

@@ -10,18 +10,52 @@ WebSocket client for Chrome DevTools Protocol communication.
 - `message_channel::Channel{Dict{String, Any}}`: Channel for message communication
 - `next_id::Int`: Counter for message IDs
 - `page_loaded::Bool`: Flag indicating if the page has finished loading
+- `endpoint::String`: The debugging endpoint URL
 """
-mutable struct WSClient
+@kwdef mutable struct WSClient
     ws::Union{WebSocket, Nothing}
     ws_url::String
     is_connected::Bool
     message_channel::Channel{Dict{String, Any}}
     next_id::Int
     page_loaded::Bool
+    endpoint::String
 
-    function WSClient(ws_url::String)
-        new(nothing, ws_url, false, Channel{Dict{String, Any}}(100), 1, false)
+    function WSClient(ws_url::String, endpoint::String = "")
+        new(nothing, ws_url, false, Channel{Dict{String, Any}}(100), 1, false, endpoint)
     end
+end
+Base.show(io::IO, client::WSClient) = print(io, "WSClient(url: $(client.ws_url))")
+
+"""
+    Browser
+
+Alias for `WSClient`.
+"""
+const Browser = WSClient
+
+"""
+    Page
+
+Represents a browser page/tab with its associated WebSocket client.
+
+# Fields
+- `client::WSClient`: The WebSocket client for communication
+- `target_id::String`: The unique identifier for this page/tab
+- `extras::Dict{String, Any}`: Additional page metadata refreshed on demand. It might be stale/inaccurate - run `update_page!` to refresh it.
+"""
+@kwdef mutable struct Page
+    client::WSClient
+    target_id::String
+    extras::Dict{String, Any}
+end
+# Enhanced show method for Page type
+function Base.show(io::IO, page::Page)
+    url = get(page.extras, "url", "-")
+    print(io, "Page(id: $(page.target_id), url: $url)")
+end
+function is_active(page::Page)
+    get(page.extras, "attached", false)
 end
 
 """
@@ -29,14 +63,20 @@ end
 
 Represents a handle to a DOM element in the browser.
 """
-struct ElementHandle
+@kwdef struct ElementHandle
     client::WSClient
     selector::String
-    verbose::Bool
+    verbose::Bool = false
     function ElementHandle(client::WSClient, selector::String; verbose::Bool = false)
         new(client, selector, verbose)
     end
 end
+Base.show(io::IO, eh::ElementHandle) = print(io, "ElementHandle(selector: $(eh.selector))")
+function ElementHandle(page::Page, selector::String; verbose::Bool = false)
+    ElementHandle(page.client, selector; verbose)
+end
+
+### Errors
 
 """
     ElementNotFoundError

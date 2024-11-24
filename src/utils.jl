@@ -8,7 +8,7 @@ function extract_cdp_result(
         response::Dict, path::Vector{String} = ["result", "result", "value"])
     current = response
     for key in path
-        if haskey(current, key)
+        if current isa Dict && haskey(current, key)
             current = current[key]
         else
             return nothing

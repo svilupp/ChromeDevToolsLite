@@ -9,27 +9,22 @@ This example demonstrates how to:
 
 using ChromeDevToolsLite
 
-function main()
-    # Connect to Chrome browser
-    println("Connecting to browser...")
-    client = connect_browser(verbose=true)
+# Connect to Chrome browser
+println("Connecting to browser...")
+client = connect_browser(verbose = true)
 
-    try
-        # Navigate to a test page
-        println("Navigating to example.com...")
-        goto(client, "https://example.com")
+try
+    # Navigate to a test page
+    println("Navigating to example.com...")
+    goto(client, "https://example.com")
 
-        # Get page title using JavaScript evaluation
-        title = evaluate(client, "document.title")
-        println("Page title: $title")
+    # Get page title using JavaScript evaluation
+    title = evaluate(client, "document.title")
+    println("Page title: $title")
 
-        println("Example completed successfully!")
-    finally
-        # Always close the connection
-        println("Closing browser connection...")
-        close(client)
-    end
+    println("Example completed successfully!")
+finally
+    # Always close the connection
+    println("Closing browser connection...")
+    close(client)
 end
-
-# Run the example
-main()

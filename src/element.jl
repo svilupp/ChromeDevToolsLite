@@ -5,7 +5,7 @@ Click an element.
 """
 function click(element::ElementHandle; options = Dict())
     element.verbose && @debug "Attempting to click element" selector=element.selector
-    result = send_cdp_message(element.client,
+    result = send_cdp(element.client,
         "Runtime.evaluate",
         Dict{String, Any}(
             "expression" => """
@@ -17,9 +17,8 @@ function click(element::ElementHandle; options = Dict())
                     }
                     // Ensure element is in viewport
                     el.scrollIntoView({behavior: 'instant', block: 'center'});
-                    // Dispatch events in correct order
-                    el.dispatchEvent(new MouseEvent('mousedown', {bubbles: true}));
-                    el.dispatchEvent(new MouseEvent('mouseup', {bubbles: true}));
+                    // Simulate click events
+                    el.focus();
                     el.click();
                     return true;
                 })()
@@ -27,46 +26,52 @@ function click(element::ElementHandle; options = Dict())
             "returnByValue" => true
         ))
     success = extract_element_result(result)
-    element.verbose &&
-        @info "Click operation result" selector=element.selector success=success
-    return success
+    if !success
+        element.verbose &&
+            @info "Click operation failed - element not found" selector=element.selector
+        return false
+    end
+    element.verbose && @info "Click operation completed" selector=element.selector
+    return true
 end
 
 """
     type_text(element::ElementHandle, text::String; options=Dict())
 
-Type text into an element.
+Type text into an element using JavaScript.
 """
 function type_text(element::ElementHandle, text::String; options = Dict())
     element.verbose && @debug "Attempting to type text" selector=element.selector text=text
-    result = send_cdp_message(element.client,
+    safe_selector = replace(element.selector, "'" => "\\'")
+    safe_text = replace(text, "'" => "\\'")
+    result = send_cdp(element.client,
         "Runtime.evaluate",
         Dict(
             "expression" => """
                 (function() {
-                    const el = document.querySelector('$(element.selector)');
+                    const el = document.querySelector('$(safe_selector)');
                     if (!el || !el.isConnected) {
                         console.error('Element not found or not connected to DOM');
                         return false;
                     }
-                    // Focus the element first
                     el.focus();
-                    // Clear existing value
-                    el.value = '';
-                    // Set new value
-                    el.value = '$(text)';
-                    // Dispatch events in correct order
+                    el.value = '$(safe_text)';
                     el.dispatchEvent(new Event('input', { bubbles: true }));
                     el.dispatchEvent(new Event('change', { bubbles: true }));
-                    return el.value === '$(text)';
+                    return el.value === '$(safe_text)';
                 })()
             """,
             "returnByValue" => true
         ))
     success = extract_element_result(result)
-    element.verbose &&
-        @info "Type text operation result" selector=element.selector success=success
-    return success
+    if !success
+        element.verbose &&
+            @info "Type text operation failed - element not found" selector=element.selector
+        return false
+    end
+
+    element.verbose && @info "Type text operation completed" selector=element.selector
+    return true
 end
 
 """
@@ -76,7 +81,7 @@ Check a checkbox or radio button element.
 """
 function check(element::ElementHandle; options = Dict())
     element.verbose && @debug "Attempting to check element" selector=element.selector
-    result = send_cdp_message(element.client,
+    result = send_cdp(element.client,
         "Runtime.evaluate",
         Dict(
             "expression" => """
@@ -111,7 +116,7 @@ Uncheck a checkbox element.
 """
 function uncheck(element::ElementHandle; options = Dict())
     element.verbose && @debug "Attempting to uncheck element" selector=element.selector
-    result = send_cdp_message(element.client,
+    result = send_cdp(element.client,
         "Runtime.evaluate",
         Dict{String, Any}(
             "expression" => """
@@ -147,7 +152,7 @@ Select an option in a select element by value.
 function select_option(element::ElementHandle, value::String; options = Dict())
     element.verbose &&
         @debug "Attempting to select option" selector=element.selector value=value
-    result = send_cdp_message(element.client,
+    result = send_cdp(element.client,
         "Runtime.evaluate",
         Dict{String, Any}(
             "expression" => """
@@ -178,7 +183,7 @@ Check if an element is visible.
 function is_visible(element::ElementHandle)
     element.verbose && @debug "Checking element visibility" selector=element.selector
     safe_selector = replace(element.selector, "'" => "\\'")
-    result = send_cdp_message(element.client,
+    result = send_cdp(element.client,
         "Runtime.evaluate",
         Dict{String, Any}(
             "expression" => """
@@ -208,13 +213,36 @@ function is_visible(element::ElementHandle)
 end
 
 """
-    get_text(element::ElementHandle) -> String
+    wait_for_visible(element::ElementHandle; retry_delay::Real = 0.3,
+        timeout::Real = 10, visible::Bool = true)
+
+Wait for an element to be visible, unless `visible` is false (="invisible" element).
+Throws a TimeoutError if the timeout is reached.
+"""
+function wait_for_visible(element::ElementHandle; retry_delay::Real = 0.3,
+        timeout::Real = 10, visible::Bool = true)
+    start_time = time()
+    while (time() - start_time) < timeout
+        try
+            if !visible || is_visible(element)
+                return element
+            end
+        catch
+            sleep(0.1)
+        end
+        sleep(retry_delay)
+    end
+    throw(TimeoutError("Timeout waiting for element: $(element.selector)"))
+end
+
+"""
+    get_text(element::ElementHandle)
 
 Get the text content of an element.
 """
 function get_text(element::ElementHandle)
     element.verbose && @debug "Getting element text" selector=element.selector
-    result = send_cdp_message(element.client,
+    result = send_cdp(element.client,
         "Runtime.evaluate",
         Dict{String, Any}(
             "expression" => """
@@ -244,7 +272,7 @@ Get the value of an attribute on an element.
 function get_attribute(element::ElementHandle, name::String)
     element.verbose &&
         @debug "Getting element attribute" selector=element.selector attribute=name
-    result = send_cdp_message(element.client,
+    result = send_cdp(element.client,
         "Runtime.evaluate",
         Dict(
             "expression" => """
@@ -285,7 +313,7 @@ Assumed the element is variable `el`.
 function evaluate_handle(element::ElementHandle, expression::String)
     element.verbose &&
         @debug "Evaluating expression on element" selector=element.selector expression=expression
-    result = send_cdp_message(element.client,
+    result = send_cdp(element.client,
         "Runtime.evaluate",
         Dict{String, Any}(
             "expression" => """

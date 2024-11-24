@@ -9,6 +9,7 @@ function start_message_handler(client::WSClient)
             while client.is_connected && !isnothing(client.ws)
                 try
                     msg = WebSockets.receive(client.ws)
+                    @debug "Received message" msg=msg connection_state=WebSockets.isclosed(client.ws)
                     if !isnothing(msg)
                         data = JSON3.read(msg, Dict)
 
@@ -26,7 +27,18 @@ function start_message_handler(client::WSClient)
                         put!(client.message_channel, data)
                     end
                 catch e
-                    if isa(e, WebSocketError) && e.status == 1000
+                    if isa(e, EOFError)
+                        @warn "WebSocket connection closed by server" ws_state=WebSockets.isclosed(client.ws)
+                        client.is_connected = false
+                        # Attempt to reconnect
+                        try
+                            try_connect(client; max_retries = 3)
+                            @info "Successfully reconnected after EOF"
+                        catch reconnect_error
+                            @error "Failed to reconnect after EOF" exception=reconnect_error
+                        end
+                        break
+                    elseif isa(e, WebSocketError) && e.status == 1000
                         @debug "WebSocket closed normally"
                         break
                     elseif isa(e, ArgumentError) && occursin("receive() requires", e.msg)
@@ -59,8 +71,8 @@ function try_connect(client::WSClient; max_retries::Int = MAX_RETRIES,
     with_retry(max_retries = max_retries, retry_delay = retry_delay, verbose = verbose) do
         verbose && @debug "Attempting WebSocket connection" url=client.ws_url
 
-        # Channel for connection status
-        connection_status = Channel{Union{WebSocket, Exception}}(1)
+        # Channel for connection status with buffer for race conditions
+        connection_status = Channel{Union{WebSocket, Exception}}(2)
 
         # Connection task
         @async begin
@@ -69,7 +81,8 @@ function try_connect(client::WSClient; max_retries::Int = MAX_RETRIES,
                     client.ws = ws
                     client.is_connected = true
                     put!(connection_status, ws)
-                    # Keep connection alive
+
+                    # Keep connection alive with heartbeat
                     while client.is_connected && !WebSockets.isclosed(ws)
                         sleep(0.1)
                     end
@@ -88,7 +101,7 @@ function try_connect(client::WSClient; max_retries::Int = MAX_RETRIES,
             end
         end
 
-        # Wait for connection result
+        # Wait for connection result with proper cleanup
         result = take!(connection_status)
 
         isa(result, Exception) && throw(result)
@@ -100,7 +113,7 @@ end
 
 """
     connect!(client::WSClient; max_retries::Int = MAX_RETRIES,
-        retry_delay::Real = RETRY_DELAY, verbose::Bool = false)
+        retry_delay::Real = RETRY_DELAY,  timeout::Real = CONNECTION_TIMEOUT, verbose::Bool = false)
 
 Connect to Chrome DevTools Protocol WebSocket endpoint.
 Returns the connected client.
@@ -108,23 +121,26 @@ Returns the connected client.
 # Arguments
 - `max_retries::Int`: The maximum number of retries to establish the connection.
 - `retry_delay::Real`: The delay between retries in seconds.
+- `timeout::Real`: The timeout for the connection in seconds.
 - `verbose::Bool`: Whether to print verbose debug information.
 """
 function connect!(client::WSClient; max_retries::Int = MAX_RETRIES,
-        retry_delay::Real = RETRY_DELAY, verbose::Bool = false)
+        retry_delay::Real = RETRY_DELAY, timeout::Real = CONNECTION_TIMEOUT,
+        verbose::Bool = false)
     if client.is_connected
         verbose && @debug "Client already connected"
         return client
     end
 
     try_connect(
-        client; max_retries = max_retries, retry_delay = retry_delay, verbose = verbose)
+        client; max_retries = max_retries, retry_delay = retry_delay, timeout = timeout,
+        verbose = verbose)
     start_message_handler(client)
     return client
 end
 
 """
-    send_cdp_message(
+    send_cdp(
         client::WSClient, method::String, params::Dict = Dict();
         increment_id::Bool = true, timeout::Real = CONNECTION_TIMEOUT)
 
@@ -143,7 +159,7 @@ Send a Chrome DevTools Protocol message and wait for the response.
 # Throws
 - `TimeoutError`: If response times out
 """
-function send_cdp_message(
+function send_cdp(
         client::WSClient, method::String, params::Dict = Dict();
         increment_id::Bool = true, timeout::Real = CONNECTION_TIMEOUT)
     if !client.is_connected || isnothing(client.ws)
@@ -228,7 +244,7 @@ Close the WebSocket connection and clean up resources.
 # Arguments
 - `client::WSClient`: The WebSocket client to close
 """
-function close(client::WSClient)
+function Base.close(client::WSClient)
     if client.is_connected && !isnothing(client.ws)
         client.is_connected = false
         try
