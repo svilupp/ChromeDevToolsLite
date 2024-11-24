@@ -25,10 +25,16 @@ function ensure_browser_available(
     for attempt in 1:max_retries
         try
             verbose && @debug "Checking Chrome debug port (attempt $attempt/$max_retries)"
-            response = HTTP.get("$endpoint/json/version")
+            response = HTTP.get("$endpoint/json/version", readtimeout=10)
             if response.status == 200
-                verbose && @info "Chrome is running" version=String(response.body)
-                return true
+                # Additional verification of response content
+                version_info = JSON3.read(String(response.body))
+                if haskey(version_info, "Browser") && haskey(version_info, "webSocketDebuggerUrl")
+                    verbose && @info "Chrome is running" version=version_info["Browser"]
+                    return true
+                else
+                    @warn "Invalid version response format" response=String(response.body)
+                end
             else
                 error("Unexpected response status: $(response.status)")
             end
@@ -131,22 +137,26 @@ function connect_browser(
 
         # Enable required domains with proper error handling
         try
-            send_cdp(client, "Page.enable", Dict())
-            send_cdp(client, "Runtime.enable", Dict())
-            send_cdp(client, "DOM.enable", Dict())
-            send_cdp(client, "CSS.enable")
-            send_cdp(client, "Network.enable")
+            send_cdp(client, "Page.enable", Dict(); timeout=10.0)
+            send_cdp(client, "Runtime.enable", Dict(); timeout=10.0)
+            send_cdp(client, "DOM.enable", Dict(); timeout=10.0)
+            send_cdp(client, "CSS.enable", Dict(); timeout=10.0)
+            send_cdp(client, "Network.enable", Dict(); timeout=10.0)
         catch e
             throw(ConnectionError("Failed to enable CDP domains: $(sprint(showerror, e))"))
         end
 
         # Verify the connection
         try
-            result = send_cdp(client, "Browser.getVersion", Dict(); increment_id = false)
-            haskey(result, "result") ||
-                throw(ConnectionError("Invalid response from Browser.getVersion"))
-            verbose && @info "Connected to browser" version=get(
-                result["result"], "product", "unknown")
+            # Check browser version
+            result = send_cdp(client, "Browser.getVersion", Dict(); increment_id = false, timeout=10.0)
+            haskey(result, "result") || throw(ConnectionError("Invalid response from Browser.getVersion"))
+
+            # Additional connection verification
+            runtime_result = send_cdp(client, "Runtime.evaluate", Dict("expression" => "1+1"); timeout=10.0)
+            haskey(runtime_result, "result") || throw(ConnectionError("Failed to evaluate basic expression"))
+
+            verbose && @info "Connected to browser" version=get(result["result"], "product", "unknown")
         catch e
             throw(ConnectionError("Failed to verify browser connection: $(sprint(showerror, e))"))
         end
@@ -212,3 +222,34 @@ function new_context(
 
     return page
 end
+
+"""
+    goto(client::WSClient, url::String; verbose::Bool=false)
+
+Navigate to the specified URL using the client's page.
+"""
+function goto(client::WSClient, url::String; verbose::Bool=false)
+    goto(get_page(client), url; verbose=verbose)
+end
+
+"""
+    close_browser(client::WSClient)
+
+Close the browser connection and clean up resources.
+First closes the active page/target, then closes the underlying WebSocket connection.
+"""
+function close_browser(client::WSClient)
+    # First close the page to clean up any page-specific resources
+    try
+        page = get_page(client)
+        close(page)
+    catch e
+        @debug "Error closing page" exception=e
+    end
+
+    # Then close the underlying WebSocket connection using the base close method
+    Base.close(client)
+end
+
+# Export the new function name
+export close_browser

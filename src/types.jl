@@ -59,6 +59,22 @@ function is_active(page::Page)
 end
 
 """
+    Page
+
+Represents a browser page/tab with its associated WebSocket client.
+
+# Fields
+- `client::WSClient`: The WebSocket client for communication
+- `target_id::String`: The unique identifier for this page/tab
+- `extras::Dict{String, Any}`: Additional page metadata
+"""
+struct Page
+    client::WSClient
+    target_id::String
+    extras::Dict{String, Any}
+end
+
+"""
     ElementHandle
 
 Represents a handle to a DOM element in the browser.
