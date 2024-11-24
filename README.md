@@ -38,6 +38,13 @@ A lightweight Julia package for browser automation using the Chrome DevTools Pro
   - Text area content management
   - Multiple element selection and verification
 
+- **Input Control**
+  - Mouse movement and click simulation
+  - Double-click support
+  - Keyboard input and key press events
+  - Modifier key combinations (Control, Alt, Shift)
+  - Element position detection
+
 ## Installation
 
 Package is not registered yet.
@@ -66,18 +73,20 @@ try
     # Navigate to a page
     goto(client, "https://example.com")
 
-    # Get page content
-    html_content = content(client)
-    println("Page title: ", evaluate(client, "document.title"))
+    # Find and interact with elements
+    element = query_selector(client, "button")
+
+    # Move mouse and click
+    move_mouse(client, 100, 100)
+    click(client)
+
+    # Type text with keyboard
+    input = query_selector(client, "input")
+    type_text(input, "Hello World!")
+    press_key(client, "Enter")
 
     # Take a screenshot
     screenshot(client)
-
-    # Interact with elements using JavaScript
-    evaluate(client, """
-        document.querySelector('button').click();
-        document.querySelector('input').value = 'Hello World';
-    """)
 finally
     close(client)
 end
@@ -171,7 +180,7 @@ For more detailed examples and solutions, see the [examples/](examples/) directo
 
 ## Running Examples
 
-The package includes five comprehensive example scripts in the `examples/` directory that demonstrate all key features:
+The package includes six comprehensive example scripts in the `examples/` directory that demonstrate all key features:
 
 ### 1. Basic Connection (`1_basic_connection.jl`)
 - Browser connection and cleanup
@@ -201,6 +210,14 @@ The package includes five comprehensive example scripts in the `examples/` direc
 - Complex JavaScript execution
 - JSON-based content verification
 - Visual result capture with screenshots
+
+### 6. Mouse and Keyboard Control (`6_mouse_keyboard_control.jl`)
+- Mouse movement and positioning
+- Click and double-click operations
+- Keyboard input simulation
+- Modifier key combinations
+- Element position detection
+- Complex input sequences
 
 To run an example:
 
