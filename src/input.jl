@@ -30,24 +30,22 @@ function click(client::WSClient; button::String="left", x::Union{Int,Nothing}=no
 
     modifier_flags = sum((get(modifier_map, mod, 0) for mod in modifiers), init=0)
 
-    # Get current position if x and y are not provided
-    if isnothing(x) || isnothing(y)
-        pos = get_mouse_position(client)
-        x = pos.x
-        y = pos.y
-    end
-
     # Base parameters for mouse events
     params = Dict{String,Any}(
         "button" => button,
         "clickCount" => 1,
-        "x" => x,
-        "y" => y,
         "modifiers" => modifier_flags
     )
 
-    # Sequence: move -> mousePressed -> mouseReleased
-    send_command(client, "Input.dispatchMouseEvent", merge(params, Dict("type" => "mouseMoved")))
+    # Add coordinates only if explicitly provided
+    if !isnothing(x) && !isnothing(y)
+        params["x"] = x
+        params["y"] = y
+        # Move to specified position first
+        send_command(client, "Input.dispatchMouseEvent", merge(params, Dict("type" => "mouseMoved")))
+    end
+
+    # Click sequence: mousePressed -> mouseReleased
     send_command(client, "Input.dispatchMouseEvent", merge(params, Dict("type" => "mousePressed")))
     send_command(client, "Input.dispatchMouseEvent", merge(params, Dict("type" => "mouseReleased")))
 end
@@ -163,13 +161,31 @@ function press_key(client::WSClient, key::String; modifiers::Vector{String}=Stri
 end
 
 """
-    type_text(client::WSClient, text::String)
+    type_text(client::WSClient, text::String, element_handle::Union{String,Nothing}=nothing)
 
-Type a sequence of characters.
+Type text either globally or into a specific element.
+
+# Arguments
+- `client::WSClient`: The WebSocket client to perform the action on
+- `text::String`: Text to type
+- `element_handle::Union{String,Nothing}=nothing`: Optional CSS selector for target element
 """
-function type_text(client::WSClient, text::String)
-    for char in text
-        press_key(client, string(char))
+function type_text(client::WSClient, text::String, element_handle::Union{String,Nothing}=nothing)
+    if !isnothing(element_handle)
+        script = """
+        (function() {
+            const element = document.querySelector('$(element_handle)');
+            if (!element) return false;
+            element.value = '$(text)';
+            element.dispatchEvent(new Event('input', { bubbles: true }));
+            element.dispatchEvent(new Event('change', { bubbles: true }));
+            return true;
+        })()
+        """
+        success = evaluate(client, script)
+        !success && error("Element not found: $(element_handle)")
+    else
+        press_key(client, text)
     end
 end
 
