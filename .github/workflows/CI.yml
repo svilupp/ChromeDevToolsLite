@@ -46,6 +46,9 @@ jobs:
           wget -q -O chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
           sudo apt install -y ./chrome.deb
           google-chrome --version
+          # Start Chrome in headless debug mode
+          google-chrome --headless=new --remote-debugging-port=9222 --no-sandbox --disable-gpu &
+          sleep 5  # Give Chrome time to start up
 
       - name: Configure system limits
         run: |
@@ -58,6 +61,10 @@ jobs:
       - uses: julia-actions/julia-runtest@v1
         env:
           JULIA_DEBUG: "ChromeDevToolsLite"
+          CHROME_LOG_FILE: "/tmp/chrome-debug.log"
+        run: |
+          curl -v http://localhost:9222/json/version || (cat /tmp/chrome-debug.log && exit 1)
+          julia --project -e 'using Pkg; Pkg.test()'
 
       - uses: julia-actions/julia-processcoverage@v1
       - uses: codecov/codecov-action@v4
