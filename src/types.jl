@@ -73,7 +73,7 @@ Represents a handle to a DOM element in the browser.
 end
 Base.show(io::IO, eh::ElementHandle) = print(io, "ElementHandle(selector: $(eh.selector))")
 function ElementHandle(page::Page, selector::String; verbose::Bool = false)
-    ElementHandle(page.client, selector, verbose)
+    ElementHandle(page.client, selector; verbose)
 end
 
 ### Errors

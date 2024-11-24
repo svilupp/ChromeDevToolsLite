@@ -236,7 +236,7 @@ function wait_for_visible(element::ElementHandle; retry_delay::Real = 0.3,
 end
 
 """
-    get_text(element::ElementHandle) -> String
+    get_text(element::ElementHandle)
 
 Get the text content of an element.
 """

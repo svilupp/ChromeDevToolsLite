@@ -15,8 +15,7 @@
     update_page!(page)
     @test haskey(page.extras, "targetId")
 
-    page = new_page(client)
-    info = get_page_info(page)
+    info = get_page_info(new_test_page)
     @test haskey(info, "targetId")
     @test haskey(info, "url")
     @test info["url"] == "about:blank"

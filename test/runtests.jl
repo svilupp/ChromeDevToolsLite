@@ -20,6 +20,8 @@ include("test_utils.jl")
         Aqua.test_all(ChromeDevToolsLite)
     end
     client = setup_test()
+    include("utils.jl")
+    include("types.jl")
     include("basic_test.jl")
     include("websocket_test.jl")
     include("element_test.jl")

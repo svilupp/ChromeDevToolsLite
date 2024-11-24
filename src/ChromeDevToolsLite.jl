@@ -51,7 +51,7 @@ export goto, evaluate, screenshot, content
 export get_target_info, update_page!, get_page_info, get_page
 export get_viewport, set_viewport!, query_selector, query_selector_all, get_element_info
 export new_page, get_all_pages
-export wait_for_ready_state
+export wait_for_ready_state, is_active
 include("page.jl")
 
 export connect_browser, new_context, ensure_browser_available
