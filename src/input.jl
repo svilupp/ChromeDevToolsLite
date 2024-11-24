@@ -147,6 +147,102 @@ function get_element_position(ws_client::WSClient, element_handle::String)
 end
 
 # Keyboard Actions
+KEY_MAPPINGS = Dict(
+    # Letters
+    "a" => Dict("code" => "KeyA", "key" => "a", "keyCode" => 65),
+    "b" => Dict("code" => "KeyB", "key" => "b", "keyCode" => 66),
+    "c" => Dict("code" => "KeyC", "key" => "c", "keyCode" => 67),
+    "d" => Dict("code" => "KeyD", "key" => "d", "keyCode" => 68),
+    "e" => Dict("code" => "KeyE", "key" => "e", "keyCode" => 69),
+    "f" => Dict("code" => "KeyF", "key" => "f", "keyCode" => 70),
+    "g" => Dict("code" => "KeyG", "key" => "g", "keyCode" => 71),
+    "h" => Dict("code" => "KeyH", "key" => "h", "keyCode" => 72),
+    "i" => Dict("code" => "KeyI", "key" => "i", "keyCode" => 73),
+    "j" => Dict("code" => "KeyJ", "key" => "j", "keyCode" => 74),
+    "k" => Dict("code" => "KeyK", "key" => "k", "keyCode" => 75),
+    "l" => Dict("code" => "KeyL", "key" => "l", "keyCode" => 76),
+    "m" => Dict("code" => "KeyM", "key" => "m", "keyCode" => 77),
+    "n" => Dict("code" => "KeyN", "key" => "n", "keyCode" => 78),
+    "o" => Dict("code" => "KeyO", "key" => "o", "keyCode" => 79),
+    "p" => Dict("code" => "KeyP", "key" => "p", "keyCode" => 80),
+    "q" => Dict("code" => "KeyQ", "key" => "q", "keyCode" => 81),
+    "r" => Dict("code" => "KeyR", "key" => "r", "keyCode" => 82),
+    "s" => Dict("code" => "KeyS", "key" => "s", "keyCode" => 83),
+    "t" => Dict("code" => "KeyT", "key" => "t", "keyCode" => 84),
+    "u" => Dict("code" => "KeyU", "key" => "u", "keyCode" => 85),
+    "v" => Dict("code" => "KeyV", "key" => "v", "keyCode" => 86),
+    "w" => Dict("code" => "KeyW", "key" => "w", "keyCode" => 87),
+    "x" => Dict("code" => "KeyX", "key" => "x", "keyCode" => 88),
+    "y" => Dict("code" => "KeyY", "key" => "y", "keyCode" => 89),
+    "z" => Dict("code" => "KeyZ", "key" => "z", "keyCode" => 90),
+
+    # Numbers
+    "0" => Dict("code" => "Digit0", "key" => "0", "keyCode" => 48),
+    "1" => Dict("code" => "Digit1", "key" => "1", "keyCode" => 49),
+    "2" => Dict("code" => "Digit2", "key" => "2", "keyCode" => 50),
+    "3" => Dict("code" => "Digit3", "key" => "3", "keyCode" => 51),
+    "4" => Dict("code" => "Digit4", "key" => "4", "keyCode" => 52),
+    "5" => Dict("code" => "Digit5", "key" => "5", "keyCode" => 53),
+    "6" => Dict("code" => "Digit6", "key" => "6", "keyCode" => 54),
+    "7" => Dict("code" => "Digit7", "key" => "7", "keyCode" => 55),
+    "8" => Dict("code" => "Digit8", "key" => "8", "keyCode" => 56),
+    "9" => Dict("code" => "Digit9", "key" => "9", "keyCode" => 57),
+
+    # Special characters
+    " " => Dict("code" => "Space", "key" => " ", "keyCode" => 32),
+    "." => Dict("code" => "Period", "key" => ".", "keyCode" => 190),
+    "," => Dict("code" => "Comma", "key" => ",", "keyCode" => 188),
+    "-" => Dict("code" => "Minus", "key" => "-", "keyCode" => 189),
+    "=" => Dict("code" => "Equal", "key" => "=", "keyCode" => 187),
+    ";" => Dict("code" => "Semicolon", "key" => ";", "keyCode" => 186),
+    "'" => Dict("code" => "Quote", "key" => "'", "keyCode" => 222),
+    "/" => Dict("code" => "Slash", "key" => "/", "keyCode" => 191),
+    "\\" => Dict("code" => "Backslash", "key" => "\\", "keyCode" => 220),
+    "[" => Dict("code" => "BracketLeft", "key" => "[", "keyCode" => 219),
+    "]" => Dict("code" => "BracketRight", "key" => "]", "keyCode" => 221),
+    "`" => Dict("code" => "Backquote", "key" => "`", "keyCode" => 192),
+
+    # Control keys
+    "Enter" => Dict("code" => "Enter", "key" => "Enter", "keyCode" => 13),
+    "Tab" => Dict("code" => "Tab", "key" => "Tab", "keyCode" => 9),
+    "Backspace" => Dict("code" => "Backspace", "key" => "Backspace", "keyCode" => 8),
+    "Delete" => Dict("code" => "Delete", "key" => "Delete", "keyCode" => 46),
+    "Escape" => Dict("code" => "Escape", "key" => "Escape", "keyCode" => 27),
+
+    # Arrow keys
+    "ArrowUp" => Dict("code" => "ArrowUp", "key" => "ArrowUp", "keyCode" => 38),
+    "ArrowDown" => Dict("code" => "ArrowDown", "key" => "ArrowDown", "keyCode" => 40),
+    "ArrowLeft" => Dict("code" => "ArrowLeft", "key" => "ArrowLeft", "keyCode" => 37),
+    "ArrowRight" => Dict("code" => "ArrowRight", "key" => "ArrowRight", "keyCode" => 39),
+
+    # Function keys
+    "F1" => Dict("code" => "F1", "key" => "F1", "keyCode" => 112),
+    "F2" => Dict("code" => "F2", "key" => "F2", "keyCode" => 113),
+    "F3" => Dict("code" => "F3", "key" => "F3", "keyCode" => 114),
+    "F4" => Dict("code" => "F4", "key" => "F4", "keyCode" => 115),
+    "F5" => Dict("code" => "F5", "key" => "F5", "keyCode" => 116),
+    "F6" => Dict("code" => "F6", "key" => "F6", "keyCode" => 117),
+    "F7" => Dict("code" => "F7", "key" => "F7", "keyCode" => 118),
+    "F8" => Dict("code" => "F8", "key" => "F8", "keyCode" => 119),
+    "F9" => Dict("code" => "F9", "key" => "F9", "keyCode" => 120),
+    "F10" => Dict("code" => "F10", "key" => "F10", "keyCode" => 121),
+    "F11" => Dict("code" => "F11", "key" => "F11", "keyCode" => 122),
+    "F12" => Dict("code" => "F12", "key" => "F12", "keyCode" => 123)
+)
+
+"Translates the `key` into codes and keycodes where possible"
+function get_key_info(key)
+    global KEY_MAPPINGS
+
+    # Default to the first character's uppercase ASCII value if not found
+    default = Dict(
+        "key" => key,
+        "code" => length(key) == 1 ? "Key$(uppercase(key))" : key,
+        "keyCode" => length(key) == 1 ? Int(uppercase(key)[1]) : 0
+    )
+
+    return get(KEY_MAPPINGS, lowercase(key), default)
+end
 """
     press_key(client::WSClient, key::String; modifiers::Vector{String} = String[],
         verbose::Bool = false)
@@ -173,10 +269,11 @@ function press_key(client::WSClient, key::String; modifiers::Vector{String} = St
 
     params = Dict{String, Any}(
         "type" => "keyDown",
-        "key" => key,
-        "code" => key,
+        "text" => key,
         "modifiers" => modifier_flags
     )
+    key_info = get_key_info(key)
+    merge!(params, key_info)
 
     result = send_cdp(
         client, "Input.dispatchKeyEvent", merge(params, Dict("type" => "keyDown")))
