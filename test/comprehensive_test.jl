@@ -73,13 +73,13 @@
         wait_for_ready_state(client)
 
         # Test input field with ElementHandle
-        input = wait_for_element(client, "#name")
+        input = wait_for_visible(ElementHandle(client, "#name"))
         @test type_text(input, "Test User")
         sleep(0.5)  # Allow for input processing
         @test evaluate_handle(input, "el.value") == "Test User"
 
         # Test checkbox with ElementHandle
-        checkbox = wait_for_element(client, "#check1")
+        checkbox = wait_for_visible(ElementHandle(client, "#check1"))
         @test check(checkbox)
         sleep(0.5)  # Allow for state change
         @test evaluate_handle(checkbox, "el.checked") == true
@@ -96,15 +96,15 @@
         wait_for_ready_state(client)
 
         # Test visible elements
-        visible_el = wait_for_element(client, "[data-testid='item1']")
+        visible_el = wait_for_visible(ElementHandle(client, "[data-testid='item1']"))
         @test is_visible(visible_el)
 
         # Test hidden elements (using display: none)
-        hidden_el = wait_for_element(client, "[data-testid='item3']", visible = false)
+        hidden_el = ElementHandle(client, "[data-testid='item3']")
         @test !is_visible(hidden_el)
 
         # Test special element
-        special_el = wait_for_element(client, "[data-testid='item5']")
+        special_el = wait_for_visible(ElementHandle(client, "[data-testid='item5']"))
         @test is_visible(special_el)
     end
 
@@ -116,13 +116,13 @@
         wait_for_ready_state(client)
 
         # Test static text content
-        content = wait_for_element(client, "#content")
+        content = wait_for_visible(ElementHandle(client, "#content"))
         @test !isempty(get_text(content))
 
         # Test dynamic text content
-        dynamic = wait_for_element(client, "#dynamic-content")
+        dynamic = wait_for_visible(ElementHandle(client, "#dynamic-content"))
         initial_text = get_text(dynamic)
-        button = wait_for_element(client, "#update-button")
+        button = wait_for_visible(ElementHandle(client, "#update-button"))
         @test click(button)
         sleep(1)  # Allow for content update
         @test get_text(dynamic) != initial_text
@@ -136,8 +136,8 @@
         wait_for_ready_state(client)
 
         # Test radio button selection
-        radio1 = wait_for_element(client, "#radio1")
-        radio2 = wait_for_element(client, "#radio2")
+        radio1 = wait_for_visible(ElementHandle(client, "#radio1"))
+        radio2 = wait_for_visible(ElementHandle(client, "#radio2"))
 
         @test check(radio1)
         sleep(0.5)  # Allow for state change
@@ -158,7 +158,7 @@
         wait_for_ready_state(client)
 
         # Test attribute retrieval
-        element = wait_for_element(client, "#test-div")
+        element = wait_for_visible(ElementHandle(client, "#test-div"))
         @test get_attribute(element, "data-custom") == "test-data"
         @test get_attribute(element, "nonexistent") === nothing
 
@@ -189,8 +189,8 @@
         wait_for_ready_state(client)
 
         # Test required field validation
-        input = wait_for_element(client, "#required-input")
-        submit = wait_for_element(client, "#submit-button")
+        input = wait_for_visible(ElementHandle(client, "#required-input"))
+        submit = wait_for_visible(ElementHandle(client, "#submit-button"))
 
         @test click(submit)
         sleep(0.5)  # Allow for validation
@@ -210,10 +210,10 @@
         wait_for_ready_state(client)
 
         # Test delayed content visibility
-        delayed = wait_for_element(client, "#delayed-content", visible = false)
+        delayed = ElementHandle(client, "#delayed-content")
         @test !is_visible(delayed)
 
-        show_button = wait_for_element(client, "#show-delayed")
+        show_button = wait_for_visible(ElementHandle(client, "#show-delayed"))
         @test click(show_button)
 
         # Wait for animation with retry
@@ -230,10 +230,10 @@
         @test is_visible(delayed)
 
         # Test dynamic content updates
-        dynamic = wait_for_element(client, "#dynamic-content")
+        dynamic = wait_for_visible(ElementHandle(client, "#dynamic-content"))
         initial_content = get_text(dynamic)
 
-        update_button = wait_for_element(client, "#update-button")
+        update_button = wait_for_visible(ElementHandle(client, "#update-button"))
         @test click(update_button)
         sleep(1)  # Allow for content update
         @test get_text(dynamic) != initial_content
@@ -246,8 +246,8 @@
         wait_for_ready_state(client)
 
         # Test username validation
-        username = wait_for_element(client, "#username")
-        error_msg = wait_for_element(client, "#username-error", visible = false)
+        username = wait_for_visible(ElementHandle(client, "#username"))
+        error_msg = ElementHandle(client, "#username-error")
 
         @test type_text(username, "ab")  # Too short
         sleep(0.5)  # Allow for validation
@@ -266,8 +266,8 @@
         @test !is_visible(error_msg)
 
         # Test checkboxes
-        pref1 = wait_for_element(client, "#pref1")
-        pref2 = wait_for_element(client, "#pref2")
+        pref1 = wait_for_visible(ElementHandle(client, "#pref1"))
+        pref2 = wait_for_visible(ElementHandle(client, "#pref2"))
 
         @test check(pref1)
         @test check(pref2)
@@ -276,14 +276,15 @@
         @test evaluate_handle(pref2, "el.checked") == true
 
         # Test select dropdown
-        select = wait_for_element(client, "#notification-type")
+        select = wait_for_visible(ElementHandle(client, "#notification-type"))
         @test select_option(select, "weekly")
         sleep(0.5)  # Allow for selection
         @test evaluate_handle(select, "el.value") == "weekly"
 
         # Test form submission
-        submit = wait_for_element(client, "#submit-form")
-        result = wait_for_element(client, "#form-result", visible = false)
+        submit = wait_for_visible(ElementHandle(client, "#submit-form"))
+        result = wait_for_visible(ElementHandle(client, "#form-result"),
+            visible = false)
 
         @test click(submit)
         sleep(1)  # Allow for form submission and result display

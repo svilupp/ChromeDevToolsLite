@@ -216,17 +216,15 @@ end
     wait_for_visible(element::ElementHandle; retry_delay::Real = 0.3,
         timeout::Real = 10, visible::Bool = true)
 
-Wait for an element to be visible.
+Wait for an element to be visible, unless `visible` is false (="invisible" element).
 Throws a TimeoutError if the timeout is reached.
-
-Can override state with other methods by passing into `visible` parameter.
 """
 function wait_for_visible(element::ElementHandle; retry_delay::Real = 0.3,
         timeout::Real = 10, visible::Bool = true)
     start_time = time()
     while (time() - start_time) < timeout
         try
-            if visible || is_visible(element)
+            if !visible || is_visible(element)
                 return element
             end
         catch
