@@ -25,6 +25,20 @@ mutable struct WSClient
 end
 
 """
+    Browser
+
+Represents a Chrome browser instance with its debugging endpoint and client.
+
+# Fields
+- `endpoint::String`: The debugging endpoint URL
+- `client::WSClient`: The WebSocket client for communication
+"""
+struct Browser
+    endpoint::String
+    client::WSClient
+end
+
+"""
     Page
 
 Represents a browser page/tab with its associated WebSocket client.

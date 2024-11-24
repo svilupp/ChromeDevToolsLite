@@ -126,5 +126,23 @@ function connect_browser(
         return client
     end
 
-    return client
+    return Browser(endpoint, client)
+end
+
+"""
+    goto(browser::Browser, url::String; verbose::Bool=false)
+
+Navigate to the specified URL using the browser's client.
+"""
+function goto(browser::Browser, url::String; verbose::Bool=false)
+    goto(browser.client, url; verbose=verbose)
+end
+
+"""
+    close(browser::Browser)
+
+Close the browser connection by closing its WebSocket client.
+"""
+function Base.close(browser::Browser)
+    close(browser.client)
 end
