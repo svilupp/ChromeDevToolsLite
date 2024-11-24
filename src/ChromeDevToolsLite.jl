@@ -49,20 +49,21 @@ include("websocket.jl")
 # Include page functionality
 export goto, evaluate, screenshot, content
 export get_target_info, update_page!, get_page_info, get_page
-export get_viewport, set_viewport, query_selector, query_selector_all, get_element_info
-export new_context, new_page, get_all_pages
+export get_viewport, set_viewport!, query_selector, query_selector_all, get_element_info
+export new_page, get_all_pages
+export wait_for_ready_state
 include("page.jl")
 
-export connect_browser, ensure_browser_available
+export connect_browser, new_context, ensure_browser_available
 include("browser.jl")
 
-include("browser_context.jl")
-
 # Include input functionality before element handling
-export click, dblclick, move_mouse, get_mouse_position, press_key, type_text, get_element_position
+export click, dblclick, move_mouse, get_mouse_position, press_key, type_text,
+       get_element_position
 include("input.jl")
 
 export check, uncheck, select_option, is_visible, get_text, get_attribute, evaluate_handle
+export wait_for_visible
 include("element.jl")
 
 end

@@ -15,7 +15,8 @@ Perform a mouse click action at the specified coordinates or current mouse posit
 - `y::Union{Int,Nothing}=nothing`: Optional y-coordinate for the click
 - `modifiers::Vector{String}=String[]`: Keyboard modifiers (e.g., ["Shift", "Control"])
 """
-function click(client::WSClient; button::String="left", x::Union{Int,Nothing}=nothing, y::Union{Int,Nothing}=nothing, modifiers::Vector{String}=String[])
+function click(client::WSClient; button::String = "left", x::Union{Int, Nothing} = nothing,
+        y::Union{Int, Nothing} = nothing, modifiers::Vector{String} = String[])
     # Convert modifiers to integer flags as per CDP spec
     modifier_map = Dict(
         "Alt" => 1,
@@ -24,26 +25,32 @@ function click(client::WSClient; button::String="left", x::Union{Int,Nothing}=no
         "Shift" => 8
     )
 
-    modifier_flags = sum((get(modifier_map, mod, 0) for mod in modifiers), init=0)
+    modifier_flags = sum((get(modifier_map, mod, 0) for mod in modifiers), init = 0)
 
-    # Base parameters for mouse events
-    params = Dict{String,Any}(
-        "button" => button,
-        "clickCount" => 1,
-        "modifiers" => modifier_flags
-    )
-
-    # Add coordinates only if explicitly provided
-    if !isnothing(x) && !isnothing(y)
-        params["x"] = x
-        params["y"] = y
-        # Move to specified position first
-        send_cdp(client, "Input.dispatchMouseEvent", merge(params, Dict("type" => "mouseMoved")))
+    # If coordinates aren't provided, get current mouse position
+    if isnothing(x) || isnothing(y)
+        pos = get_mouse_position(client)
+        x = pos.x
+        y = pos.y
+    else
+        ## User provided x and y, let's make sure we're there
+        move_mouse(client, x, y)
     end
 
+    # Base parameters for mouse events
+    params = Dict{String, Any}(
+        "button" => button,
+        "clickCount" => 1,
+        "modifiers" => modifier_flags,
+        "x" => x,
+        "y" => y  # Now x and y are always defined
+    )
+
     # Click sequence: mousePressed -> mouseReleased
-    send_cdp(client, "Input.dispatchMouseEvent", merge(params, Dict("type" => "mousePressed")))
-    send_cdp(client, "Input.dispatchMouseEvent", merge(params, Dict("type" => "mouseReleased")))
+    send_cdp(
+        client, "Input.dispatchMouseEvent", merge(params, Dict("type" => "mousePressed")))
+    send_cdp(
+        client, "Input.dispatchMouseEvent", merge(params, Dict("type" => "mouseReleased")))
 end
 
 """
@@ -51,9 +58,10 @@ end
 
 Perform a double-click action at the specified coordinates or current mouse position.
 """
-function dblclick(client::WSClient; x::Union{Int,Nothing}=nothing, y::Union{Int,Nothing}=nothing)
-    click(client; x=x, y=y)
-    click(client; x=x, y=y)
+function dblclick(client::WSClient; x::Union{Int, Nothing} = nothing,
+        y::Union{Int, Nothing} = nothing)
+    click(client; x = x, y = y)
+    click(client; x = x, y = y)
 end
 
 """
@@ -68,11 +76,12 @@ function move_mouse(client::WSClient, x::Int, y::Int)
     """)
 
     # Dispatch CDP mouse move event
-    send_cdp(client, "Input.dispatchMouseEvent", Dict(
-        "type" => "mouseMoved",
-        "x" => x,
-        "y" => y
-    ))
+    send_cdp(client, "Input.dispatchMouseEvent",
+        Dict(
+            "type" => "mouseMoved",
+            "x" => x,
+            "y" => y
+        ))
 end
 
 """
@@ -90,7 +99,7 @@ function get_mouse_position(client::WSClient)
 
     result = evaluate(client, "JSON.stringify(window.mousePosition)")
     parsed = JSON3.read(result)
-    return (x=parsed.x, y=parsed.y)
+    return (x = parsed.x, y = parsed.y)
 end
 
 """
@@ -120,7 +129,7 @@ function get_element_position(ws_client::WSClient, element_handle::String)
     result = evaluate(ws_client, script)
     isnothing(result) && error("Element not found: $(element_handle)")
     parsed = JSON3.read(result)
-    return (x=parsed.x, y=parsed.y)
+    return (x = parsed.x, y = parsed.y)
 end
 
 # Keyboard Actions
@@ -134,7 +143,7 @@ Press and release a keyboard key.
 - `key::String`: Key to press (e.g., "a", "Enter", "ArrowUp")
 - `modifiers::Vector{String}=String[]`: Keyboard modifiers (e.g., ["Shift", "Control"])
 """
-function press_key(client::WSClient, key::String; modifiers::Vector{String}=String[])
+function press_key(client::WSClient, key::String; modifiers::Vector{String} = String[])
     # Convert modifiers to integer flags as per CDP spec
     modifier_map = Dict(
         "Alt" => 1,
@@ -143,9 +152,9 @@ function press_key(client::WSClient, key::String; modifiers::Vector{String}=Stri
         "Shift" => 8
     )
 
-    modifier_flags = sum((get(modifier_map, mod, 0) for mod in modifiers), init=0)
+    modifier_flags = sum((get(modifier_map, mod, 0) for mod in modifiers), init = 0)
 
-    params = Dict{String,Any}(
+    params = Dict{String, Any}(
         "type" => "keyDown",
         "key" => key,
         "code" => key,
@@ -166,7 +175,8 @@ Type text either globally or into a specific element.
 - `text::String`: Text to type
 - `element_handle::Union{String,Nothing}=nothing`: Optional CSS selector for target element
 """
-function type_text(client::WSClient, text::String, element_handle::Union{String,Nothing}=nothing)
+function type_text(
+        client::WSClient, text::String, element_handle::Union{String, Nothing} = nothing)
     if !isnothing(element_handle)
         script = """
         (function() {

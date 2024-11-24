@@ -1,8 +1,3 @@
-using Test
-using ChromeDevToolsLite
-
-const ENDPOINT = "http://localhost:9222"
-
 @testset "Browser and Page Tests" begin
     client = connect_browser(ENDPOINT)
 

@@ -24,13 +24,14 @@ function click(element::ElementHandle; options = Dict())
         ))
     success = extract_element_result(result)
     if !success
-        element.verbose && @info "Click operation failed - element not found" selector=element.selector
+        element.verbose &&
+            @info "Click operation failed - element not found" selector=element.selector
         return false
     end
 
     # Get element position and perform CDP click
     pos = get_element_position(element.client, element.selector)
-    click(element.client; x=pos.x, y=pos.y)
+    click(element.client; x = pos.x, y = pos.y)
 
     element.verbose && @info "Click operation completed" selector=element.selector
     return true
@@ -64,7 +65,8 @@ function type_text(element::ElementHandle, text::String; options = Dict())
         ))
     success = extract_element_result(result)
     if !success
-        element.verbose && @info "Type text operation failed - element not found" selector=element.selector
+        element.verbose &&
+            @info "Type text operation failed - element not found" selector=element.selector
         return false
     end
 
@@ -208,6 +210,31 @@ function is_visible(element::ElementHandle)
     element.verbose &&
         @info "Visibility check result" selector=element.selector visible=visible
     return visible
+end
+
+"""
+    wait_for_visible(element::ElementHandle; retry_delay::Real = 0.3,
+        timeout::Real = 10, visible::Bool = true)
+
+Wait for an element to be visible.
+Throws a TimeoutError if the timeout is reached.
+
+Can override state with other methods by passing into `visible` parameter.
+"""
+function wait_for_visible(element::ElementHandle; retry_delay::Real = 0.3,
+        timeout::Real = 10, visible::Bool = true)
+    start_time = time()
+    while (time() - start_time) < timeout
+        try
+            if visible || is_visible(element)
+                return element
+            end
+        catch
+            sleep(0.1)
+        end
+        sleep(retry_delay)
+    end
+    throw(TimeoutError("Timeout waiting for element: $(element.selector)"))
 end
 
 """

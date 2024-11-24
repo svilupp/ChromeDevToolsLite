@@ -1,77 +1,69 @@
-using Test
-using ChromeDevToolsLite
-
 @testset "Page Management" begin
-    client = connect_browser()
+    client = connect_browser(ENDPOINT)
     page = get_page(client)
 
-    @testset "Basic Page Operations" begin
-        @test page isa Page
-        @test !isempty(get_target_info(page))
+    # Test new page creation
+    new_test_page = new_page(client)
+    @test new_test_page isa Page
+    @test !isempty(new_test_page.target_id)
 
-        # Test page info and updates
-        update_page!(page)
-        @test haskey(page.extras, "target_info")
+    # Basic page operations
+    @test page isa Page
+    @test !isempty(get_target_info(page))
 
-        info = get_page_info(page)
-        @test haskey(info, "target_info")
-        @test !isempty(info["target_info"])
-    end
+    # Test page info and updates
+    update_page!(page)
+    @test haskey(page.extras, "targetId")
 
-    @testset "Viewport Management" begin
-        # Get initial viewport
-        viewport = get_viewport(page)
-        @test haskey(viewport, "layoutViewport")
+    info = get_page_info(page)
+    @test haskey(info, "targetId")
+    @test haskey(info, "url")
+    @test info["url"] == "about:blank"
 
-        # Set custom viewport
-        set_viewport(page, width=1024, height=768)
-        new_viewport = get_viewport(page)
-        @test new_viewport["layoutViewport"]["clientWidth"] == 1024
-        @test new_viewport["layoutViewport"]["clientHeight"] == 768
-    end
+    # Test multiple pages
+    pages = get_all_pages(client)
+    @test length(pages) > 0
+    @test all(p -> p isa Page, pages)
+    @test any(p -> p.target_id == new_test_page.target_id, pages)
 
-    @testset "Element Selection" begin
-        goto(client, "about:blank")
+    # Viewport management tests
+    viewport = get_viewport(page)
+    @test viewport isa Dict{String, Any}
+    @test haskey(viewport, "layoutViewport")
 
-        # Inject test content
-        evaluate(client, """
-            document.body.innerHTML = `
-                <div id="test">
-                    <p class="para">Test paragraph</p>
-                    <p class="para">Another paragraph</p>
-                </div>
-            `;
-        """)
+    set_viewport!(page, width = 1024, height = 768)
+    new_viewport = get_viewport(page)
+    @test new_viewport["layoutViewport"]["clientWidth"] == 1024
+    @test new_viewport["layoutViewport"]["clientHeight"] == 768
 
-        # Test single element selection
-        element = query_selector(page, "#test")
-        @test !isnothing(element)
-        @test haskey(element, "nodeId")
+    # Element selection tests
+    goto(client, "about:blank")
 
-        # Test multiple elements selection
-        elements = query_selector_all(page, ".para")
-        @test length(elements) == 2
+    # Inject test content
+    evaluate(client, """
+        document.body.innerHTML = `
+            <div id="test">
+                <p class="para">Test paragraph</p>
+                <p class="para">Another paragraph</p>
+            </div>
+        `;
+    """)
 
-        # Test element info
-        info = get_element_info(page, "#test")
-        @test haskey(info, "node")
-        @test info["node"]["nodeType"] == 1  # Element node
-    end
+    # Test single element selection
+    el_id = query_selector(page, "#test")
+    @test !isnothing(el_id)
+    @test el_id isa Integer
 
-    @testset "Browser Context" begin
-        # Test context creation with custom viewport
-        context_page = new_context(client,
-            viewport=Dict("width" => 1920, "height" => 1080),
-            user_agent="Custom User Agent")
-        @test context_page isa Page
+    # Test multiple elements selection
+    elements = query_selector_all(page, ".para")
+    @test length(elements) == 2
 
-        viewport = get_viewport(context_page)
-        @test viewport["layoutViewport"]["clientWidth"] == 1920
-        @test viewport["layoutViewport"]["clientHeight"] == 1080
+    # Test element info
+    info = get_element_info(page, "#test")
+    @test haskey(info, "nodeId")
+    @test info["id"] == "test"
+    @test info["tag"] == "DIV"
 
-        # Test multiple pages
-        pages = get_all_pages(client)
-        @test length(pages) > 0
-        @test all(p -> p isa Page, pages)
-    end
+    # Clean up
+    close(client)
 end

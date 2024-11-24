@@ -1,36 +1,3 @@
-# Helper functions for robust testing
-function wait_for_element(client, selector; timeout=10, visible=true)
-    start_time = time()
-    while (time() - start_time) < timeout
-        try
-            element = ElementHandle(client, selector)
-            if !visible || is_visible(element)
-                return element
-            end
-        catch
-            sleep(0.1)
-        end
-        sleep(0.5)
-    end
-    error("Timeout waiting for element: $selector")
-end
-
-function wait_for_navigation(client; timeout=10)
-    start_time = time()
-    while (time() - start_time) < timeout
-        try
-            response = evaluate(client, "document.readyState")
-            if response == "complete"
-                return true
-            end
-        catch
-            sleep(0.1)
-        end
-        sleep(0.5)
-    end
-    error("Navigation timeout")
-end
-
 @testset "ChromeDevToolsLite Comprehensive Tests" begin
     client = connect_browser(ENDPOINT)
 
@@ -103,7 +70,7 @@ end
         local_path = joinpath(@__DIR__, "test_pages", "form.html")
         url = "file://" * local_path
         goto(client, url)
-        wait_for_navigation(client)
+        wait_for_ready_state(client)
 
         # Test input field with ElementHandle
         input = wait_for_element(client, "#name")
@@ -126,14 +93,14 @@ end
         local_path = joinpath(@__DIR__, "test_pages", "multiple_elements.html")
         url = "file://" * local_path
         goto(client, url)
-        wait_for_navigation(client)
+        wait_for_ready_state(client)
 
         # Test visible elements
         visible_el = wait_for_element(client, "[data-testid='item1']")
         @test is_visible(visible_el)
 
         # Test hidden elements (using display: none)
-        hidden_el = wait_for_element(client, "[data-testid='item3']", visible=false)
+        hidden_el = wait_for_element(client, "[data-testid='item3']", visible = false)
         @test !is_visible(hidden_el)
 
         # Test special element
@@ -146,7 +113,7 @@ end
         local_path = joinpath(@__DIR__, "test_pages", "text_content.html")
         url = "file://" * local_path
         goto(client, url)
-        wait_for_navigation(client)
+        wait_for_ready_state(client)
 
         # Test static text content
         content = wait_for_element(client, "#content")
@@ -166,7 +133,7 @@ end
         local_path = joinpath(@__DIR__, "test_pages", "radio_buttons.html")
         url = "file://" * local_path
         goto(client, url)
-        wait_for_navigation(client)
+        wait_for_ready_state(client)
 
         # Test radio button selection
         radio1 = wait_for_element(client, "#radio1")
@@ -188,7 +155,7 @@ end
         local_path = joinpath(@__DIR__, "test_pages", "element_evaluate.html")
         url = "file://" * local_path
         goto(client, url)
-        wait_for_navigation(client)
+        wait_for_ready_state(client)
 
         # Test attribute retrieval
         element = wait_for_element(client, "#test-div")
@@ -219,7 +186,7 @@ end
         local_path = joinpath(@__DIR__, "test_pages", "form_validation.html")
         url = "file://" * local_path
         goto(client, url)
-        wait_for_navigation(client)
+        wait_for_ready_state(client)
 
         # Test required field validation
         input = wait_for_element(client, "#required-input")
@@ -240,10 +207,10 @@ end
         local_path = joinpath(@__DIR__, "test_pages", "dynamic_content.html")
         url = "file://" * local_path
         goto(client, url)
-        wait_for_navigation(client)
+        wait_for_ready_state(client)
 
         # Test delayed content visibility
-        delayed = wait_for_element(client, "#delayed-content", visible=false)
+        delayed = wait_for_element(client, "#delayed-content", visible = false)
         @test !is_visible(delayed)
 
         show_button = wait_for_element(client, "#show-delayed")
@@ -276,11 +243,11 @@ end
         local_path = joinpath(@__DIR__, "test_pages", "complex_form.html")
         url = "file://" * local_path
         goto(client, url)
-        wait_for_navigation(client)
+        wait_for_ready_state(client)
 
         # Test username validation
         username = wait_for_element(client, "#username")
-        error_msg = wait_for_element(client, "#username-error", visible=false)
+        error_msg = wait_for_element(client, "#username-error", visible = false)
 
         @test type_text(username, "ab")  # Too short
         sleep(0.5)  # Allow for validation
@@ -316,7 +283,7 @@ end
 
         # Test form submission
         submit = wait_for_element(client, "#submit-form")
-        result = wait_for_element(client, "#form-result", visible=false)
+        result = wait_for_element(client, "#form-result", visible = false)
 
         @test click(submit)
         sleep(1)  # Allow for form submission and result display

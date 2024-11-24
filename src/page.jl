@@ -1,40 +1,22 @@
 """
-    Page
-
-Represents a browser page/tab with its associated WebSocket client.
-
-# Fields
-- `client::WSClient`: The WebSocket client for communication
-- `target_id::String`: The unique identifier for this page/tab
-- `extras::Dict{String, Any}`: Additional page metadata
-"""
-struct Page
-    client::WSClient
-    target_id::String
-    extras::Dict{String, Any}
-end
-
-"""
-    Page(client::WSClient)
-
-Create a new Page instance with the given WebSocket client.
-Extracts the target_id from the WebSocket URL.
-"""
-function Page(client::WSClient)
-    # Extract target ID from WebSocket URL (format: ws://host/devtools/page/<target_id>)
-    m = match(r"/devtools/page/([^/]+)", client.ws_url)
-    target_id = isnothing(m) ? "" : m[1]
-    Page(client, target_id, Dict{String, Any}())
-end
-
-"""
     get_page(client::WSClient) -> Page
 
 Get the current page associated with the WebSocket client.
 If no page exists, creates a new one.
 """
 function get_page(client::WSClient)
-    Page(client)
+    # Get all pages and find the active one
+    pages = get_all_pages(client)
+    active_page = findfirst(
+        page -> get(page.extras, "attached", false) &&
+            get(page.extras, "type", "") == "page",
+        pages)
+
+    if isnothing(active_page)
+        return new_page(client)
+    else
+        return pages[active_page]
+    end
 end
 
 """
@@ -44,7 +26,8 @@ Get information about the current target (page) using CDP command Target.getTarg
 """
 function get_target_info(page::Page)
     result = send_cdp(page.client, "Target.getTargetInfo", Dict{String, Any}())
-    return get(result, "result", Dict{String, Any}())
+    return get(
+        get(result, "result", Dict{String, Any}()), "targetInfo", Dict{String, Any}())
 end
 
 """
@@ -91,10 +74,12 @@ end
 
 Create and return a new page in the current browser context.
 """
-function new_page(client::WSClient)
-    result = send_cdp(client, "Target.createTarget", Dict{String, Any}(
-        "url" => "about:blank"
-    ))
+function new_page(client::WSClient, context_id::String = "")
+    params = Dict{String, Any}("url" => "about:blank")
+    if !isempty(context_id)
+        params["browserContextId"] = context_id
+    end
+    result = send_cdp(client, "Target.createTarget", params)
 
     target_id = get(get(result, "result", Dict()), "targetId", "")
     if isempty(target_id)
@@ -104,12 +89,6 @@ function new_page(client::WSClient)
     page = Page(client, target_id, Dict{String, Any}())
     update_page!(page)
     return page
-end
-
-# Enhanced show method for Page type
-function Base.show(io::IO, page::Page)
-    url = get(page.extras, "url", "unknown")
-    print(io, "Page(id: $(page.target_id), url: $url)")
 end
 
 """
@@ -126,7 +105,7 @@ Navigate to the specified URL and wait for page load.
 - `NavigationError`: If navigation fails or times out
 """
 function goto(page::Page, url::String; verbose::Bool = false)
-    goto(page.client, url; verbose=verbose)
+    goto(page.client, url; verbose = verbose)
     update_page!(page)  # Update page metadata after navigation
     return nothing
 end
@@ -282,19 +261,21 @@ function get_viewport(page::Page)
 end
 
 """
-    set_viewport(page::Page; width::Int=1280, height::Int=720, device_scale_factor::Float64=1.0,
+    set_viewport!(page::Page; width::Int=1280, height::Int=720, device_scale_factor::Float64=1.0,
                 mobile::Bool=false) -> Nothing
 
 Set viewport metrics using Emulation.setDeviceMetricsOverride.
 """
-function set_viewport(page::Page; width::Int=1280, height::Int=720,
-                     device_scale_factor::Float64=1.0, mobile::Bool=false)
-    send_cdp(page.client, "Emulation.setDeviceMetricsOverride", Dict{String,Any}(
-        "width" => width,
-        "height" => height,
-        "deviceScaleFactor" => device_scale_factor,
-        "mobile" => mobile
-    ))
+function set_viewport!(page::Page; width::Int = 1280, height::Int = 720,
+        device_scale_factor::Float64 = 1.0, mobile::Bool = false)
+    send_cdp(page.client,
+        "Emulation.setDeviceMetricsOverride",
+        Dict{String, Any}(
+            "width" => width,
+            "height" => height,
+            "deviceScaleFactor" => device_scale_factor,
+            "mobile" => mobile
+        ))
     return nothing
 end
 
@@ -302,20 +283,28 @@ end
     query_selector(page::Page, selector::String) -> Union{Dict, Nothing}
 
 Find the first element matching the given selector using DOM.querySelector.
+
+If found, returns the "nodeId" value, otherwise returns nothing.
 """
 function query_selector(page::Page, selector::String)
     # First, get the document root
-    root = send_cdp(page.client, "DOM.getDocument", Dict{String,Any}("depth" => 0))
+    root = send_cdp(page.client, "DOM.getDocument", Dict{String, Any}("depth" => 0))
     root_node_id = get(root, "result", Dict())["root"]["nodeId"]
 
     # Then find the element
-    result = send_cdp(page.client, "DOM.querySelector", Dict{String,Any}(
-        "nodeId" => root_node_id,
-        "selector" => selector
-    ))
+    result = send_cdp(page.client, "DOM.querySelector",
+        Dict{String, Any}(
+            "nodeId" => root_node_id,
+            "selector" => selector
+        ))
 
     node_id = get(get(result, "result", Dict()), "nodeId", 0)
-    return node_id != 0 ? Dict("nodeId" => node_id) : nothing
+    return node_id != 0 ? node_id : nothing
+end
+
+function query_selector(client::WSClient, selector::String)
+    page = get_page(client)
+    return query_selector(page, selector)
 end
 
 """
@@ -325,16 +314,22 @@ Find all elements matching the given selector using DOM.querySelectorAll.
 """
 function query_selector_all(page::Page, selector::String)
     # First, get the document root
-    root = send_cdp(page.client, "DOM.getDocument", Dict{String,Any}("depth" => 0))
+    root = send_cdp(page.client, "DOM.getDocument", Dict{String, Any}("depth" => 0))
     root_node_id = get(root, "result", Dict())["root"]["nodeId"]
 
     # Then find all matching elements
-    result = send_cdp(page.client, "DOM.querySelectorAll", Dict{String,Any}(
-        "nodeId" => root_node_id,
-        "selector" => selector
-    ))
+    result = send_cdp(page.client, "DOM.querySelectorAll",
+        Dict{String, Any}(
+            "nodeId" => root_node_id,
+            "selector" => selector
+        ))
 
     return get(get(result, "result", Dict()), "nodeIds", Int[])
+end
+
+function query_selector_all(client::WSClient, selector::String)
+    page = get_page(client)
+    return query_selector_all(page, selector)
 end
 
 """
@@ -344,27 +339,37 @@ Get detailed information about the first element matching the selector.
 """
 function get_element_info(page::Page, selector::String)
     node = query_selector(page, selector)
-    isnothing(node) && return Dict{String,Any}()
+    isnothing(node) && return Dict{String, Any}()
 
-    result = send_cdp(page.client, "DOM.describeNode", Dict{String,Any}(
-        "nodeId" => node["nodeId"],
-        "depth" => 1
-    ))
+    result = send_cdp(page.client, "DOM.describeNode",
+        Dict{String, Any}(
+            "nodeId" => node,
+            "depth" => 1
+        ))
 
-    node_info = get(result, "result", Dict{String,Any}())
+    node_info = get(result, "result", Dict{String, Any}())
     if haskey(node_info, "node")
         node_data = node_info["node"]
-        return Dict{String,Any}(
+        attrs = get(node_data, "attributes", String[])
+        attr_dict = Dict(attrs[i] => attrs[i + 1] for i in 1:2:(length(attrs) - 1))
+
+        return Dict{String, Any}(
             "tag" => get(node_data, "nodeName", ""),
-            "attributes" => get(node_data, "attributes", String[]),
-            "classes" => split(get(Dict(zip(get(node_data, "attributes", String[])...)), "class", ""), " "),
+            "attributes" => attr_dict,
+            "classes" => split(get(attr_dict, "class", ""), " "),
             "child_count" => get(node_data, "childNodeCount", 0),
-            "id" => get(Dict(zip(get(node_data, "attributes", String[])...)), "id", ""),
-            "text_content" => get(node_data, "nodeValue", "")
+            "id" => get(attr_dict, "id", ""),
+            "text_content" => get(node_data, "nodeValue", ""),
+            "nodeId" => get(node_data, "nodeId", 0)
         )
     end
 
-    return Dict{String,Any}()
+    return Dict{String, Any}()
+end
+
+function get_element_info(client::WSClient, selector::String)
+    page = get_page(client)
+    return get_element_info(page, selector)
 end
 
 """
@@ -406,9 +411,35 @@ end
 """
     close(page::Page)
 
-Close the page by closing its WebSocket client and cleaning up any stored metadata.
+Close the page/target without closing its WebSocket client.
+Returns true if the target was successfully closed.
 """
 function Base.close(page::Page)
-    delete!(PAGE_EXTRAS, page.target_id)  # Clean up stored metadata
-    close(page.client)
+    result = send_cdp(page.client, "Target.closeTarget",
+        Dict{String, Any}("targetId" => page.target_id))
+    return get(get(result, "result", Dict()), "success", false)
+end
+
+"""
+    wait_for_ready_state(client::WSClient; retry_delay::Real = 0.3,
+        timeout::Real = 10)
+
+Wait for the document ready state to be complete.
+Throws a TimeoutError if the timeout is reached.
+"""
+function wait_for_ready_state(client::WSClient; retry_delay::Real = 0.3,
+        timeout::Real = 10)
+    start_time = time()
+    while (time() - start_time) < timeout
+        try
+            response = evaluate(client, "document.readyState")
+            if response == "complete"
+                return true
+            end
+        catch
+            sleep(0.1)
+        end
+        sleep(retry_delay)
+    end
+    throw(TimeoutError("Document ready state timeout"))
 end

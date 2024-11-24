@@ -80,6 +80,7 @@ end
         endpoint::String = "http://localhost:9222";
         max_retries::Int = MAX_RETRIES,
         retry_delay::Real = RETRY_DELAY,
+        timeout::Real = CONNECTION_TIMEOUT,
         verbose::Bool = false
 )
 
@@ -90,12 +91,14 @@ Returns a WSClient connected to a new page.
 - `endpoint::String`: The URL of the Chrome debugging endpoint. Eg, `http://localhost:9222`.
 - `max_retries::Int`: The maximum number of retries to check for Chrome.
 - `retry_delay::Real`: The delay between retries in seconds.
+- `timeout::Real`: The timeout for the connection in seconds.
 - `verbose::Bool`: Whether to print verbose debug information.
 """
 function connect_browser(
         endpoint::String = "http://localhost:9222";
         max_retries::Int = MAX_RETRIES,
         retry_delay::Real = RETRY_DELAY,
+        timeout::Real = CONNECTION_TIMEOUT,
         verbose::Bool = false
 )
     client = with_retry(
@@ -120,7 +123,8 @@ function connect_browser(
 
         client = WSClient(ws_url, endpoint)
         try
-            connect!(client; max_retries = max_retries, retry_delay = retry_delay, verbose = verbose)
+            connect!(client; max_retries = max_retries,
+                retry_delay = retry_delay, timeout = timeout, verbose = verbose)
         catch e
             throw(ConnectionError("Failed to establish WebSocket connection: $(sprint(showerror, e))"))
         end
@@ -130,6 +134,8 @@ function connect_browser(
             send_cdp(client, "Page.enable", Dict())
             send_cdp(client, "Runtime.enable", Dict())
             send_cdp(client, "DOM.enable", Dict())
+            send_cdp(client, "CSS.enable")
+            send_cdp(client, "Network.enable")
         catch e
             throw(ConnectionError("Failed to enable CDP domains: $(sprint(showerror, e))"))
         end
@@ -137,8 +143,10 @@ function connect_browser(
         # Verify the connection
         try
             result = send_cdp(client, "Browser.getVersion", Dict(); increment_id = false)
-            haskey(result, "result") || throw(ConnectionError("Invalid response from Browser.getVersion"))
-            verbose && @info "Connected to browser" version=get(result["result"], "product", "unknown")
+            haskey(result, "result") ||
+                throw(ConnectionError("Invalid response from Browser.getVersion"))
+            verbose && @info "Connected to browser" version=get(
+                result["result"], "product", "unknown")
         catch e
             throw(ConnectionError("Failed to verify browser connection: $(sprint(showerror, e))"))
         end
@@ -147,29 +155,60 @@ function connect_browser(
     end
 
     # Initialize browser state with proper error handling
-    try
-        send_cdp(client, "Page.navigate", Dict("url" => "about:blank"))
-    catch e
-        @warn "Failed to navigate to blank page" exception=e
-    end
+    # try
+    #     send_cdp(client, "Page.navigate", Dict("url" => "about:blank"))
+    # catch e
+    #     @warn "Failed to navigate to blank page" exception=e
+    # end
 
     return client
 end
 
 """
-    goto(client::WSClient, url::String; verbose::Bool=false)
+    new_context(
+        client::WSClient; viewport::Dict{String, Any} = Dict(), user_agent::String = "")
 
-Navigate to the specified URL using the client's page.
-"""
-function goto(client::WSClient, url::String; verbose::Bool=false)
-    goto(get_page(client), url; verbose=verbose)
-end
+Create a new browser context with optional viewport and user agent settings.
 
-"""
-    close(client::WSClient)
+Note: Requires for the Chrome to be launched with `--enable-features=NetworkService,NetworkServiceInProcess`
 
-Close the browser connection.
+# Example
+```julia
+client = connect_browser()
+context = new_context(client,
+    viewport=Dict("width" => 1920, "height" => 1080),
+    user_agent="Mozilla/5.0 (iPhone; CPU iPhone OS 14_7_1 like Mac OS X)")
+```
 """
-function Base.close(client::WSClient)
-    close(get_page(client))
+function new_context(
+        client::WSClient;
+        viewport::Dict{String, Any} = Dict(),
+        user_agent::String = ""
+)
+    # Create new context
+    result = send_cdp(client, "Target.createBrowserContext", Dict{String, Any}())
+    context_id = get(get(result, "result", Dict()), "browserContextId", "")
+
+    # Create new page in context
+    page = new_page(client, context_id)
+
+    # Configure viewport if provided
+    if !isempty(viewport)
+        set_viewport(page;
+            width = get(viewport, "width", 1280),
+            height = get(viewport, "height", 720),
+            device_scale_factor = get(viewport, "deviceScaleFactor", 1.0),
+            mobile = get(viewport, "mobile", false)
+        )
+    end
+
+    # Set user agent if provided
+    if !isempty(user_agent)
+        send_cdp(page.client, "Network.setUserAgentOverride",
+            Dict{String, Any}(
+                "userAgent" => user_agent
+            ))
+    end
+
+    return page
 end
