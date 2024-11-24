@@ -1,5 +1,41 @@
-# Add extras dictionary to store page metadata
-const PAGE_EXTRAS = Dict{String, Dict{String, Any}}()
+"""
+    Page
+
+Represents a browser page/tab with its associated WebSocket client.
+
+# Fields
+- `client::WSClient`: The WebSocket client for communication
+- `target_id::String`: The unique identifier for this page/tab
+- `extras::Dict{String, Any}`: Additional page metadata
+"""
+struct Page
+    client::WSClient
+    target_id::String
+    extras::Dict{String, Any}
+end
+
+"""
+    Page(client::WSClient)
+
+Create a new Page instance with the given WebSocket client.
+Extracts the target_id from the WebSocket URL.
+"""
+function Page(client::WSClient)
+    # Extract target ID from WebSocket URL (format: ws://host/devtools/page/<target_id>)
+    m = match(r"/devtools/page/([^/]+)", client.ws_url)
+    target_id = isnothing(m) ? "" : m[1]
+    Page(client, target_id, Dict{String, Any}())
+end
+
+"""
+    get_page(client::WSClient) -> Page
+
+Get the current page associated with the WebSocket client.
+If no page exists, creates a new one.
+"""
+function get_page(client::WSClient)
+    Page(client)
+end
 
 """
     get_target_info(page::Page) -> Dict{String, Any}
@@ -17,7 +53,7 @@ end
 Update page metadata using Target.getTargetInfo and save to page extras.
 """
 function update_page!(page::Page)
-    PAGE_EXTRAS[page.target_id] = get_target_info(page)
+    page.extras = get_target_info(page)
     return page
 end
 
@@ -28,14 +64,71 @@ Get the latest page metadata by updating the page and returning extras.
 """
 function get_page_info(page::Page)
     update_page!(page)
-    return get(PAGE_EXTRAS, page.target_id, Dict{String, Any}())
+    return page.extras
+end
+
+"""
+    get_all_pages(client::WSClient) -> Vector{Page}
+
+Get all available browser pages/targets using Target.getTargets CDP command.
+"""
+function get_all_pages(client::WSClient)
+    result = send_cdp(client, "Target.getTargets", Dict{String, Any}())
+    targets = get(get(result, "result", Dict()), "targetInfos", [])
+
+    pages = Page[]
+    for target in targets
+        if get(target, "type", "") == "page"
+            page = Page(client, get(target, "targetId", ""), Dict{String, Any}(target))
+            push!(pages, page)
+        end
+    end
+    return pages
+end
+
+"""
+    new_page(client::WSClient) -> Page
+
+Create and return a new page in the current browser context.
+"""
+function new_page(client::WSClient)
+    result = send_cdp(client, "Target.createTarget", Dict{String, Any}(
+        "url" => "about:blank"
+    ))
+
+    target_id = get(get(result, "result", Dict()), "targetId", "")
+    if isempty(target_id)
+        error("Failed to create new page")
+    end
+
+    page = Page(client, target_id, Dict{String, Any}())
+    update_page!(page)
+    return page
 end
 
 # Enhanced show method for Page type
 function Base.show(io::IO, page::Page)
-    info = get(PAGE_EXTRAS, page.target_id, Dict{String, Any}())
-    url = get(info, "url", "unknown")
+    url = get(page.extras, "url", "unknown")
     print(io, "Page(id: $(page.target_id), url: $url)")
+end
+
+"""
+    goto(page::Page, url::String; verbose::Bool=false)
+
+Navigate to the specified URL and wait for page load.
+
+# Arguments
+- `page::Page`: The page to navigate
+- `url::String`: The URL to navigate to
+- `verbose::Bool`: Enable verbose logging (default: false)
+
+# Throws
+- `NavigationError`: If navigation fails or times out
+"""
+function goto(page::Page, url::String; verbose::Bool = false)
+    goto(page.client, url; verbose=verbose)
+    update_page!(page)  # Update page metadata after navigation
+    return nothing
 end
 
 """
@@ -308,4 +401,14 @@ function evaluate_handle(client::WSClient, expression::String; verbose::Bool = f
 
     verbose && @warn "Handle evaluation returned no result"
     return nothing
+end
+
+"""
+    close(page::Page)
+
+Close the page by closing its WebSocket client and cleaning up any stored metadata.
+"""
+function Base.close(page::Page)
+    delete!(PAGE_EXTRAS, page.target_id)  # Clean up stored metadata
+    close(page.client)
 end
