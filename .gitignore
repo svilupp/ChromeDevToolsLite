@@ -5,4 +5,11 @@
 /docs/Manifest.toml
 /docs/build/
 
+# Mac files
 .DS_Store
+
+# VSCode files
+.vscode/
+
+# Scratch files
+_**.jl

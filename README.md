@@ -53,7 +53,7 @@ Package is not registered yet.
 
 ```julia
 using Pkg
-Pkg.add(url="https://github.com/svilupp/ChromeDevToolsLite.jl")
+Pkg.add("ChromeDevToolsLite")
 ```
 
 ## Prerequisites
